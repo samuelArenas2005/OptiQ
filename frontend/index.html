@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Solver IDE - Hackathon</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Incluir Three.js desde un CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+    <div id="app-container">
+        <!-- Panel del IDE (Lado Izquierdo) -->
+        <div id="ide-panel">
+            <div class="header">
+                <h1>Quantum IDE</h1>
+                <p>Escribe tu problema estilo MiniZinc</p>
+            </div>
+            
+            <textarea id="code-editor" spellcheck="false">
+% Ejemplo de problema declarativo
+% Ingresa tus variables y restricciones aqui
+</textarea>
+            
+            <div class="controls">
+                <select id="solver-select">
+                    <option value="qaoa-pinn">Quantum QAOA + PINN Hybrid</option>
+                    <option value="classic">Classic Solver (Base)</option>
+                </select>
+                <button id="run-btn" class="btn primary">Run & Visualize 🚀</button>
+            </div>
+            
+            <div id="status-panel">
+                <h3>Estado:</h3>
+                <p id="status-text">Esperando inicio...</p>
+            </div>
+        </div>
+        
+        <!-- Panel de Animación 3D (Lado Derecho) -->
+        <div id="visualization-panel">
+            <!-- Canvas será insertado por Three.js -->
+        </div>
+    </div>
+
+    <!-- Scripts locales -->
+    <script src="js/ide.js"></script>
+    <script src="js/visualization.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
