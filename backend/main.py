@@ -1,6 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.router import router
+try:
+    from backend.api.router import router
+except ModuleNotFoundError:
+    from api.router import router
 
 app = FastAPI(title="Quantum Solver API")
 
