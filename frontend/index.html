@@ -1,60 +1,143 @@
 <!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quantum Solver IDE - Hackathon</title>
-    <link rel="stylesheet" href="css/style.css">
-    <!-- Incluir Three.js desde un CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-</head>
-<body>
-    <div id="app-container">
-        <!-- Panel del IDE (Lado Izquierdo) -->
-        <div id="ide-panel">
-            <div class="header">
-                <h1>Quantum IDE</h1>
-                <p>Escribe tu problema estilo MiniZinc</p>
-            </div>
-            
-            <textarea id="code-editor" spellcheck="false">% Problema de la Mochila Binaria (Knapsack)
-int: n = 4;
-int: capacity = 7;
-array[1..4] of int: weights = [2, 3, 4, 5];
-array[1..4] of int: values  = [3, 4, 5, 8];
-
-array[1..4] of var 0..1: x;
-
-% Restriccion de capacidad de la mochila
-constraint sum(i in 1..n)(weights[i] * x[i]) <= capacity;
-
-% Funcion objetivo: maximizar el valor total recolectado
-solve maximize sum(i in 1..n)(values[i] * x[i]);
-</textarea>
-            
-            <div class="controls">
-                <select id="solver-select">
-                    <option value="qaoa-pinn">Quantum QAOA + PINN Hybrid</option>
-                    <option value="classic">Classic Solver (Base)</option>
-                </select>
-                <button id="run-btn" class="btn primary">Run & Visualize 🚀</button>
-            </div>
-            
-            <div id="status-panel">
-                <h3>Estado:</h3>
-                <p id="status-text">Esperando inicio...</p>
-            </div>
-        </div>
-        
-        <!-- Panel de Animación 3D (Lado Derecho) -->
-        <div id="visualization-panel">
-            <!-- Canvas será insertado por Three.js -->
-        </div>
-    </div>
-
-    <!-- Scripts locales -->
-    <script src="js/ide.js"></script>
-    <script src="js/visualization.js"></script>
-    <script src="js/main.js"></script>
-</body>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>OptiQ - Quantum Optimization IDE</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23004ac6' stroke-width='2'><circle cx='12' cy='12' r='9'/><ellipse cx='12' cy='12' rx='9' ry='3'/><circle cx='12' cy='12' r='2' fill='%23004ac6'/></svg>" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <style>
+      @layer base {
+        html, body {
+          margin: 0;
+          padding: 0;
+        }
+        body {
+          overscroll-behavior: none;
+        }
+      }
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #c3c6d7;
+        border-radius: 9999px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script id="tailwind-config">
+      tailwind.config = {
+        "darkMode": "class",
+        "theme": {
+          "extend": {
+            "colors": {
+              "on-error": "#ffffff",
+              "outline-variant": "#c3c6d7",
+              "surface-container": "#e5eeff",
+              "secondary-container": "#86f2e4",
+              "on-primary-container": "#eeefff",
+              "surface-bright": "#f8f9ff",
+              "secondary": "#006a61",
+              "background": "#f8f9ff",
+              "on-secondary-fixed": "#00201d",
+              "primary": "#004ac6",
+              "error-container": "#ffdad6",
+              "on-secondary-container": "#006f66",
+              "on-tertiary": "#ffffff",
+              "on-secondary": "#ffffff",
+              "on-primary-fixed": "#00174b",
+              "on-primary": "#ffffff",
+              "surface-container-low": "#eff4ff",
+              "on-background": "#0b1c30",
+              "surface-container-high": "#dce9ff",
+              "tertiary-fixed-dim": "#d2bbff",
+              "surface": "#f8f9ff",
+              "primary-fixed-dim": "#b4c5ff",
+              "on-tertiary-container": "#f7edff",
+              "surface-dim": "#cbdbf5",
+              "surface-tint": "#0053db",
+              "on-surface-variant": "#434655",
+              "on-tertiary-fixed": "#25005a",
+              "inverse-primary": "#b4c5ff",
+              "error": "#ba1a1a",
+              "outline": "#737686",
+              "surface-container-lowest": "#ffffff",
+              "on-surface": "#0b1c30",
+              "tertiary": "#6a1edb",
+              "inverse-on-surface": "#eaf1ff",
+              "primary-container": "#2563eb",
+              "secondary-fixed-dim": "#6bd8cb",
+              "on-secondary-fixed-variant": "#005049",
+              "tertiary-fixed": "#eaddff",
+              "on-primary-fixed-variant": "#003ea8",
+              "surface-container-highest": "#d3e4fe",
+              "on-error-container": "#93000a",
+              "inverse-surface": "#213145",
+              "tertiary-container": "#8343f4",
+              "secondary-fixed": "#89f5e7",
+              "primary-fixed": "#dbe1ff",
+              "on-tertiary-fixed-variant": "#5a00c6",
+              "surface-variant": "#d3e4fe"
+            },
+            "borderRadius": {
+              "DEFAULT": "0.25rem",
+              "lg": "0.5rem",
+              "xl": "0.75rem",
+              "full": "9999px"
+            },
+            "spacing": {
+              "space-sm": "0.5rem",
+              "space-xl": "1.5rem",
+              "gutter": "0.75rem",
+              "gutter-compact": "0.5rem",
+              "margin-panel": "0.5rem",
+              "space-xs": "0.25rem",
+              "margin": "1rem",
+              "space-md": "0.75rem",
+              "space-lg": "1rem"
+            },
+            "fontFamily": {
+              "headline-sm": ["Inter", "sans-serif"],
+              "code-lg": ["JetBrains Mono", "monospace"],
+              "code-md": ["JetBrains Mono", "monospace"],
+              "body-md": ["Inter", "sans-serif"],
+              "headline-lg-mobile": ["Inter", "sans-serif"],
+              "code-sm": ["JetBrains Mono", "monospace"],
+              "body-sm": ["Inter", "sans-serif"],
+              "headline-lg": ["Inter", "sans-serif"],
+              "label-md": ["Inter", "sans-serif"],
+              "body-lg": ["Inter", "sans-serif"],
+              "headline-md": ["Inter", "sans-serif"],
+              "label-sm": ["JetBrains Mono", "monospace"]
+            },
+            "fontSize": {
+              "headline-sm": ["16px", { "lineHeight": "22px", "letterSpacing": "-0.015em", "fontWeight": "600" }],
+              "code-lg": ["14px", { "lineHeight": "22px", "letterSpacing": "-0.01em", "fontWeight": "400" }],
+              "code-md": ["12.5px", { "lineHeight": "19px", "letterSpacing": "-0.005em", "fontWeight": "400" }],
+              "body-md": ["13px", { "lineHeight": "18px", "letterSpacing": "-0.005em", "fontWeight": "400" }],
+              "headline-lg-mobile": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+              "code-sm": ["11px", { "lineHeight": "15px", "letterSpacing": "0em", "fontWeight": "500" }],
+              "body-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0em", "fontWeight": "400" }],
+              "headline-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.025em", "fontWeight": "600" }],
+              "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "500" }],
+              "body-lg": ["15px", { "lineHeight": "22px", "letterSpacing": "-0.01em", "fontWeight": "400" }],
+              "headline-md": ["20px", { "lineHeight": "26px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+              "label-sm": ["10px", { "lineHeight": "13px", "letterSpacing": "0.03em", "fontWeight": "600" }]
+            }
+          }
+        }
+      };
+    </script>
+  </head>
+  <body class="bg-surface-container-lowest min-h-screen text-on-surface antialiased m-0 p-0 overflow-x-hidden">
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>

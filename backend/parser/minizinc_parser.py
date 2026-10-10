@@ -126,23 +126,26 @@ class MiniZincParser:
             raise ValueError(f"No se pudo evaluar la expresión entera '{expr_str}': {e}")
 
     def _try_parse_parameter(self, stmt: str, model: ParsedModel) -> bool:
-        # Array de ints: array[1..N] of int: name = [1, 2, 3]
-        m_arr = re.match(r"(?:array\s*\[\s*([^\]]+)\s*\]\s*of\s+int\s*:\s*)?([a-zA-Z_]\w*)\s*=\s*\[([^\]]*)\]", stmt)
+        # Array de ints/floats: array[1..N] of int: name = [1, 2, 3] o array[1..N] of float: name = [1, 2, 3]
+        m_arr = re.match(r"(?:array\s*\[\s*([^\]]+)\s*\]\s*of\s+(?:int|float)\s*:\s*)?([a-zA-Z_]\w*)\s*=\s*\[([^\]]*)\]", stmt)
         if m_arr:
             name = m_arr.group(2)
             raw_vals = m_arr.group(3).split(",")
-            vals = [self._eval_int_expr(v, model.parameters) for v in raw_vals if v.strip()]
+            vals = [float(v.strip()) if "." in v else self._eval_int_expr(v, model.parameters) for v in raw_vals if v.strip()]
             model.parameters[name] = vals
             logger.debug(f"Parámetro array detectado: {name} = {vals}")
             return True
 
-        # Escalar int: int: name = 5; o simplemente name = 5;
-        m_scalar = re.match(r"(?:int\s*:\s*)?([a-zA-Z_]\w*)\s*=\s*([^;]+)", stmt)
+        # Escalar int o float: int: name = 5; float: name = 5.0; o name = 5;
+        m_scalar = re.match(r"(?:(?:int|float)\s*:\s*)?([a-zA-Z_]\w*)\s*=\s*([^;]+)", stmt)
         if m_scalar and not stmt.startswith("var") and not stmt.startswith("constraint") and not stmt.startswith("solve"):
             name = m_scalar.group(1)
             val_expr = m_scalar.group(2)
             try:
-                val = self._eval_int_expr(val_expr, model.parameters)
+                if "." in val_expr:
+                    val = float(val_expr.strip())
+                else:
+                    val = self._eval_int_expr(val_expr, model.parameters)
                 model.parameters[name] = val
                 logger.debug(f"Parámetro detectado: {name} = {val}")
                 return True
@@ -151,11 +154,11 @@ class MiniZincParser:
         return False
 
     def _try_parse_var_array(self, stmt: str, model: ParsedModel) -> bool:
-        # array[1..N] of var 0..1: x; o array[1..N] of var bool: x;
-        pattern = r"array\s*\[\s*([^\.]+)\.\.([^\]]+)\s*\]\s*of\s+var\s+(?:0\.\.1|bool)\s*:\s*([a-zA-Z_]\w*)"
-        m = re.match(pattern, stmt)
-        if m:
-            start_str, end_str, arr_name = m.groups()
+        # Formato 1: array[1..N] of var 0..1: x;
+        pattern1 = r"array\s*\[\s*([^\.]+)\.\.([^\]]+)\s*\]\s*of\s+var\s+(?:0\.\.1|bool)\s*:\s*([a-zA-Z_]\w*)"
+        m1 = re.match(pattern1, stmt)
+        if m1:
+            start_str, end_str, arr_name = m1.groups()
             start_idx = self._eval_int_expr(start_str, model.parameters)
             end_idx = self._eval_int_expr(end_str, model.parameters)
 
@@ -170,6 +173,27 @@ class MiniZincParser:
                 }
             logger.debug(f"Array de variables binarias detectado: {arr_name}[{start_idx}..{end_idx}]")
             return True
+
+        # Formato 2: var 0..1: x[1..N];
+        pattern2 = r"var\s+(?:0\.\.1|bool)\s*:\s*([a-zA-Z_]\w*)\s*\[\s*([^\.]+)\.\.([^\]]+)\s*\]"
+        m2 = re.match(pattern2, stmt)
+        if m2:
+            arr_name, start_str, end_str = m2.groups()
+            start_idx = self._eval_int_expr(start_str, model.parameters)
+            end_idx = self._eval_int_expr(end_str, model.parameters)
+
+            for i in range(start_idx, end_idx + 1):
+                var_name = f"{arr_name}_{i}"
+                model.variables[var_name] = {
+                    "type": "binary",
+                    "base_name": arr_name,
+                    "index": i,
+                    "lower": 0,
+                    "upper": 1
+                }
+            logger.debug(f"Array de variables binarias detectado (estilo alternativo): {arr_name}[{start_idx}..{end_idx}]")
+            return True
+
         return False
 
     def _try_parse_scalar_var(self, stmt: str, model: ParsedModel) -> bool:
