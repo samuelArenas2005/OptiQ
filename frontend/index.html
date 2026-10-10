@@ -17,9 +17,19 @@
                 <p>Escribe tu problema estilo MiniZinc</p>
             </div>
             
-            <textarea id="code-editor" spellcheck="false">
-% Ejemplo de problema declarativo
-% Ingresa tus variables y restricciones aqui
+            <textarea id="code-editor" spellcheck="false">% Problema de la Mochila Binaria (Knapsack)
+int: n = 4;
+int: capacity = 7;
+array[1..4] of int: weights = [2, 3, 4, 5];
+array[1..4] of int: values  = [3, 4, 5, 8];
+
+array[1..4] of var 0..1: x;
+
+% Restriccion de capacidad de la mochila
+constraint sum(i in 1..n)(weights[i] * x[i]) <= capacity;
+
+% Funcion objetivo: maximizar el valor total recolectado
+solve maximize sum(i in 1..n)(values[i] * x[i]);
 </textarea>
             
             <div class="controls">

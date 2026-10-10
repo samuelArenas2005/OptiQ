@@ -22,35 +22,41 @@ document.addEventListener('DOMContentLoaded', () => {
         visualizer.triggerState('parsing');
 
         try {
-            // Simulando petición al backend en FastAPI : POST /api/solve
-            /*
             const response = await fetch('http://localhost:8000/api/solve', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ code: problemCode, solver: solverType })
             });
-            const data = await response.json();
-            */
 
-            // Simulamos la respuesta escalonada para observar la animación
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.detail || 'Error en el servidor al parsear');
+            }
+
+            const data = await response.json();
+            const summary = data.parsed_summary;
+
+            statusText.innerText = `[Parseo Exitoso] ${summary.variables_count} variables (${summary.variables.join(', ')}), ${summary.constraints_count} restricciones. QUBO: ${summary.qubo_nodes} nodos.`;
+
+            // Transiciones visuales con los datos reales
             setTimeout(() => {
-                statusText.innerText = 'Ejecutando Física (PINN) para hallar los hiperparámetros...';
+                statusText.innerText = 'Ejecutando Red Neuronal (PINN) para hallar los hiperparámetros iniciales...';
                 visualizer.triggerState('pinn');
-            }, 2000);
+            }, 1500);
 
             setTimeout(() => {
                 statusText.innerText = 'Hiperparámetros hallados, ejecutando circuito QAOA...';
                 visualizer.triggerState('qaoa');
-            }, 5000);
+            }, 3500);
 
             setTimeout(() => {
-                statusText.innerText = '¡Toma de muestras lista! Resultados obtenidos con éxito.';
+                statusText.innerText = `¡Éxito! Solución: ${data.details.solution} | Energía: ${data.details.energy}`;
                 visualizer.triggerState('success');
-            }, 9000);
+            }, 6000);
 
         } catch (error) {
             console.error(error);
-            statusText.innerText = 'Hubo un error al contactar al backend.';
+            statusText.innerText = `Error: ${error.message}`;
             visualizer.triggerState('error');
         }
     });
