@@ -208,10 +208,10 @@ _(Pendiente)_ Se planea incluir pruebas para:
 
 ## Equipo
 
-| Nombre | Rol |
-|--------|-----|
-| _(nombre)_ | _(rol)_ |
-| _(nombre)_ | _(rol)_ |
+- [Ckancord33](https://github.com/Ckancord33)
+- [samuelArenas2005](https://github.com/samuelArenas2005)
+- [theClowner](https://github.com/theClowner)
+- [Danicol12](https://github.com/Danicol12)
 
 ## Atribución
 
