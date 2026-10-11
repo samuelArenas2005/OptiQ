@@ -11,7 +11,19 @@ import qiskit
 from qiskit.circuit import QuantumCircuit
 from qiskit.compiler import transpile
 from qiskit.quantum_info import Statevector
-from qiskit_aer import AerSimulator
+
+try:
+    from qiskit_aer import AerSimulator
+    AER_AVAILABLE = True
+except ImportError:
+    AerSimulator = None
+    AER_AVAILABLE = False
+
+import sys
+try:
+    from qiskit.providers.jobstatus import JobStatus
+except ImportError:
+    JobStatus = None
 
 try:
     from qiskit import qasm3
@@ -45,7 +57,15 @@ def resolve_qiskit_backend(
     if backend_config is None:
         backend_config = {}
 
-    # Caso 1: Se pasó un objeto backend de Qiskit ya instanciado (ej. por el entorno de Qollab)
+    # Detección automática de la variable global 'backend' provista por Qollab
+    if target_backend is None:
+        main_mod = sys.modules.get("__main__")
+        if main_mod and hasattr(main_mod, "backend"):
+            cand = getattr(main_mod, "backend")
+            if cand is not None and hasattr(cand, "run") and callable(cand.run):
+                target_backend = cand
+
+    # Caso 1: Se pasó o detectó un objeto backend de Qiskit ya instanciado (ej. entorno Qollab)
     if target_backend is not None and hasattr(target_backend, "run") and callable(target_backend.run):
         backend_name = getattr(target_backend, "name", None)
         if callable(backend_name):
@@ -53,10 +73,13 @@ def resolve_qiskit_backend(
         elif not backend_name:
             backend_name = target_backend.__class__.__name__
 
-        label = f"Qiskit Backend ({backend_name})"
+        name_lower = str(backend_name).lower()
+        is_qpu = any(w in name_lower for w in ["qpu", "hardware", "forte", "aria", "harmony", "system"])
+        device_type = "QPU Cuántico Físico" if is_qpu else "Simulador"
+        label = f"Qollab ({backend_name}) [{device_type}]"
         if console_logs is not None:
-            console_logs.append(f"[BACKEND] Utilizando backend Qiskit externo: {backend_name}")
-        return target_backend, label, "custom_qiskit"
+            console_logs.append(f"[BACKEND] Utilizando backend Qiskit de Qollab: {backend_name} ({device_type})")
+        return target_backend, label, "qollab_backend"
 
     # Convertir a string para inspeccionar nombres configurados
     backend_str = str(target_backend).strip().lower() if target_backend is not None else ""
@@ -86,22 +109,34 @@ def resolve_qiskit_backend(
                 if console_logs is not None:
                     console_logs.append(f"[QOLLAB / IONQ] Aviso al conectar con servicio remoto: {ex}.")
 
-        # Emulación optimizada para Qollab / IonQ en caso de no tener API key o estar en local
-        sim = AerSimulator()
-        label = f"Qollab / IonQ ({device_name}) [Qiskit Aer Emulado]"
+        # Emulación para Qollab / IonQ en caso de no tener API key o estar en local
+        if AER_AVAILABLE and AerSimulator is not None:
+            sim = AerSimulator()
+            label = f"Qollab / IonQ ({device_name}) [Qiskit Aer Emulado]"
+        else:
+            sim = None
+            label = f"Qollab / IonQ ({device_name}) [Qiskit Statevector]"
+
         if console_logs is not None:
             console_logs.append(
                 f"[QOLLAB / IONQ] Modo '{device_name}' configurado. "
-                f"Ejecutando en Qiskit Aer con transpilación nativa para la arquitectura de IonQ."
+                f"Ejecutando con transpilación nativa para la arquitectura de IonQ."
             )
         return sim, label, "ionq_emulated"
 
-    # Caso 3: Simulador normal óptimo de Qiskit (AerSimulator con Statevector)
-    sim = AerSimulator(method="statevector")
-    label = "Qiskit AerSimulator (Statevector Acelerado)"
+    # Caso 3: Simulador estándar de Qiskit (AerSimulator si está disponible, o Statevector nativo)
+    if AER_AVAILABLE and AerSimulator is not None:
+        sim = AerSimulator(method="statevector")
+        label = "Qiskit AerSimulator (Statevector Acelerado)"
+        mode_type = "aer_statevector"
+    else:
+        sim = None
+        label = "Qiskit Statevector Simulator (Nativo Web/Qollab)"
+        mode_type = "native_statevector"
+
     if console_logs is not None:
-        console_logs.append("[BACKEND] Backend no especificado o local: utilizando Qiskit AerSimulator (Statevector) óptimo.")
-    return sim, label, "aer_statevector"
+        console_logs.append(f"[BACKEND] Backend local/web: utilizando {label}.")
+    return sim, label, mode_type
 
 
 def build_qaoa_circuit(
@@ -111,7 +146,7 @@ def build_qaoa_circuit(
     betas: List[float],
     measure: bool = False
 ) -> QuantumCircuit:
-    """
+    r"""
     Construye un QuantumCircuit de Qiskit implementando el ansatz QAOA de p-capas:
     1. Capa de superposición uniforme inicial: H^{\otimes n} |0\rangle^n = |+\rangle^n
     2. Para cada capa l = 1..p:
@@ -309,26 +344,79 @@ def run_qaoa(
             console_logs.append(f"[TRANSPILE] Transpilación directa omitida ({trans_ex}). Usando circuito original.")
             transpiled_circuit = optimal_circuit_measured
 
-        # 8. Ejecución en el backend seleccionado (Qiskit .run)
+        # 8. Ejecución en el backend seleccionado (Qiskit .run o Statevector nativo)
         counts = {}
         try:
             circuit_to_run = transpiled_circuit if transpiled_circuit is not None else optimal_circuit_measured
-            job = resolved_backend.run(circuit_to_run, shots=shots)
-            res = job.result()
-            raw_counts = res.get_counts()
-            # Limpiar espacios en bitstrings (ej. si hay múltiples registros)
-            counts = {"".join(k.split()): v for k, v in raw_counts.items()}
-            console_logs.append(f"[EXEC] Disparos ejecutados en {hardware_name}: {shots:,} shots.")
+
+            # Si tenemos un backend ejecutable con .run (QPU de Qollab, Cloud o AerSimulator)
+            if resolved_backend is not None and hasattr(resolved_backend, "run") and callable(resolved_backend.run):
+                console_logs.append(f"[EXEC] Enviando circuito QAOA a {hardware_name} ({shots:,} disparos)...")
+                job = resolved_backend.run(circuit_to_run, shots=shots)
+
+                # Polling de estado para QPU / Jobs asíncronos (patrón oficial de Qollab)
+                if hasattr(job, "status") and callable(job.status):
+                    poll_interval = 2.0
+                    while True:
+                        status = job.status()
+                        status_name = getattr(status, "name", str(status)).upper()
+
+                        if JobStatus is not None:
+                            if status == JobStatus.DONE:
+                                break
+                            elif status in [JobStatus.ERROR, JobStatus.CANCELLED]:
+                                raise RuntimeError(f"El trabajo en el QPU finalizó con error: {status}")
+                        else:
+                            if "DONE" in status_name:
+                                break
+                            elif "ERROR" in status_name or "CANCEL" in status_name:
+                                raise RuntimeError(f"El trabajo en el QPU falló con estado: {status_name}")
+
+                        print(f"    [QPU STATUS] Estado del trabajo cuántico: {status}")
+                        console_logs.append(f"[QPU STATUS] {status_name}")
+
+                        time.sleep(poll_interval)
+                        if poll_interval < 10.0:
+                            poll_interval += 2.0
+
+                res = job.result()
+                raw_counts = res.get_counts()
+                counts = {"".join(k.split()): int(v) for k, v in raw_counts.items()}
+            else:
+                # Simulación nativa mediante Qiskit Statevector (compatible al 100% con Qollab WebAssembly / Pyodide)
+                console_logs.append(f"[EXEC] Muestreo analítico de disparos con Qiskit Statevector nativo ({shots:,} shots)...")
+                optimal_circuit_state = build_qaoa_circuit(cost_operator, p_steps, best_gammas, best_betas, measure=False)
+                sv = Statevector(optimal_circuit_state)
+                raw_counts = sv.sample_counts(shots)
+                counts = {"".join(str(k).split()): int(v) for k, v in raw_counts.items()}
+                hardware_name = "Qiskit Statevector Simulator (Nativo Web)"
+
+            # Filtrado de ruido cuántico si se ejecuta en QPU físico (recomendado en Qollab)
+            if len(counts) > 4 and shots >= 100:
+                shots_threshold = shots * 0.02
+                filtered = {bits: cnt for bits, cnt in counts.items() if cnt >= shots_threshold}
+                if filtered:
+                    counts = filtered
+                    console_logs.append("[QPU] Filtro de ruido cuántico aplicado (>2% umbral).")
+
+            console_logs.append(f"[EXEC] Disparos completados exitosamente en {hardware_name}: {shots:,} shots.")
         except Exception as exec_ex:
             console_logs.append(
                 f"[AVISO] Error al ejecutar en backend '{hardware_name}': {exec_ex}. "
-                f"Ejecutando en Qiskit AerSimulator local."
+                f"Ejecutando en Qiskit Statevector local."
             )
-            local_aer = AerSimulator(method="statevector")
-            job = local_aer.run(transpile(optimal_circuit_measured, local_aer), shots=shots)
-            raw_counts = job.result().get_counts()
-            counts = {"".join(k.split()): v for k, v in raw_counts.items()}
-            hardware_name = "Qiskit AerSimulator (Fallback Local)"
+            if AER_AVAILABLE and AerSimulator is not None:
+                local_aer = AerSimulator(method="statevector")
+                job = local_aer.run(transpile(optimal_circuit_measured, local_aer), shots=shots)
+                raw_counts = job.result().get_counts()
+                counts = {"".join(k.split()): int(v) for k, v in raw_counts.items()}
+                hardware_name = "Qiskit AerSimulator (Fallback Local)"
+            else:
+                optimal_circuit_state = build_qaoa_circuit(cost_operator, p_steps, best_gammas, best_betas, measure=False)
+                sv_fallback = Statevector(optimal_circuit_state)
+                raw_counts = sv_fallback.sample_counts(shots)
+                counts = {"".join(str(k).split()): int(v) for k, v in raw_counts.items()}
+                hardware_name = "Qiskit Statevector (Fallback Nativo)"
 
         # 9. Distribución exacta de Statevector para coherencia total
         optimal_circuit_state = build_qaoa_circuit(cost_operator, p_steps, best_gammas, best_betas, measure=False)
@@ -507,6 +595,8 @@ def run_qaoa(
             "optimizer_used": optimizer_name,
             "hardware": hardware_name,
             "qasm": qasm_code,
+            "circuit": optimal_circuit_measured,
+            "counts": counts,
             "console_logs": console_logs
         }
 

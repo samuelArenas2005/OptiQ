@@ -86,7 +86,7 @@ def extract_bip_features(qubo_problem: Any, original_qp: Any = None) -> Dict[str
     if num_edges > 0 and n_vars > 1:
         # Laplaciano estándar L = D - A
         A_binary = sp.csr_matrix(([1.0] * len(rows), (rows, cols)), shape=(n_vars, n_vars))
-        D = sp.diags(degrees)
+        D = sp.diags(degrees, dtype=float)
         L = D - A_binary
 
         if n_vars <= 30:

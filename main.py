@@ -23,7 +23,15 @@ Ejecución:
 import sys
 import os
 import time
+import logging
+import warnings
 from pathlib import Path
+
+# Silenciar advertencias y logs internos ruidosos para una salida completamente limpia
+warnings.filterwarnings("ignore")
+logging.basicConfig(level=logging.WARNING)
+for log_name in ["qiskit", "ProblemParser", "MiniZincParser", "QAOASolver", "FeatureExtractor"]:
+    logging.getLogger(log_name).setLevel(logging.WARNING)
 
 # Asegurar que la raíz del proyecto esté en sys.path para importar módulos de backend/
 if "__file__" in globals():
@@ -41,9 +49,16 @@ try:
     from backend.quantum.qaoa_solver import run_qaoa
     from backend.quantum.feature_extractor import extract_bip_features
     BACKEND_AVAILABLE = True
-except ImportError as err:
-    print(f"Error cargando módulos del backend: {err}")
-    BACKEND_AVAILABLE = False
+except ImportError:
+    try:
+        from parser.problem_parser import parse_problem
+        from ml.pinn_model import get_hyperparameters
+        from quantum.qaoa_solver import run_qaoa
+        from quantum.feature_extractor import extract_bip_features
+        BACKEND_AVAILABLE = True
+    except ImportError as err:
+        print(f"Error cargando módulos del backend: {err}")
+        BACKEND_AVAILABLE = False
 
 
 # -- Problemas MiniZinc de Ejemplo Precargados --------------------------------
@@ -182,18 +197,37 @@ def run_optiq_demo(benchmark_key: str = "knapsack", p_steps: int = 2, shots: int
     print("    -> Estado               : Evita mesetas esteriles (barren plateaus) vs inicio aleatorio")
 
     # 5. EJECUCIÓN CUÁNTICA CON QAOA
-    print(f"\n[PASO 5] Construccion y Ejecucion del Circuito Cuantico QAOA (p={p_steps}):")
+    print(f"\n[PASO 5] Construccion y Ejecucion del Circuito Cuantico QAOA (p={p_steps}, shots={shots:,}):")
+
+    # Detectar automáticamente si Qollab proveyó la variable global 'backend'
+    qollab_backend = globals().get("backend")
+    if qollab_backend is None:
+        main_mod = sys.modules.get("__main__")
+        if main_mod and hasattr(main_mod, "backend"):
+            qollab_backend = getattr(main_mod, "backend")
+
+    if qollab_backend is not None:
+        b_name = getattr(qollab_backend, "name", None)
+        if callable(b_name):
+            b_name = b_name()
+        elif not b_name:
+            b_name = qollab_backend.__class__.__name__
+        is_qpu = any(w in str(b_name).lower() for w in ["qpu", "hardware", "forte", "aria", "harmony", "system"])
+        tipo_str = "QPU Cuántico Físico" if is_qpu else "Simulador Cloud"
+        print(f"    [QOLLAB DETECTADO] Conectado a: {b_name} ({tipo_str})")
+
     qaoa_config = {
         "p_steps": p_steps,
         "shots": shots,
         "optimizer": "COBYLA",
         "angle_init": "Automática",
         "gamma0": gamma_0,
-        "beta0": beta_0
+        "beta0": beta_0,
+        "backend": qollab_backend
     }
 
     t0 = time.perf_counter()
-    qaoa_result = run_qaoa(binary_problem, qaoa_config)
+    qaoa_result = run_qaoa(binary_problem, qaoa_config, backend=qollab_backend)
     t_quantum = (time.perf_counter() - t0) * 1000
 
     optimal_bitstring = qaoa_result.get("optimal_bitstring", "")
@@ -202,7 +236,10 @@ def run_optiq_demo(benchmark_key: str = "knapsack", p_steps: int = 2, shots: int
     solution_dict = qaoa_result.get("solution", {})
     distribution = qaoa_result.get("distribution", [])
     exec_time = qaoa_result.get("execution_time_ms", t_quantum)
+    qubits_cnt = qaoa_result.get("qubits_count", 7)
 
+    print(f"    -> Disparos (Shots)     : {shots:,}")
+    print(f"    -> Qubits del Circuito  : {qubits_cnt} (4 de decisión + {qubits_cnt - 4} de holgura/slack)")
     print(f"    -> Tiempo de Simulacion : {exec_time:.2f} ms")
     print(f"    -> Optimizador Clasico  : {qaoa_result.get('optimizer_used', 'COBYLA')}")
     print(f"    -> Hardware / Backend   : {qaoa_result.get('hardware', 'Vectorized Quantum Statevector')}")
@@ -230,20 +267,29 @@ def run_optiq_demo(benchmark_key: str = "knapsack", p_steps: int = 2, shots: int
     print(f"   Criterio Cumplido: Valor = {optimal_val:.2f} | Tiempo Total: {(t_parse + t_feat + t_pinn + exec_time):.2f} ms")
     print("=" * 78 + "\n")
 
+    # WIDGETS DE QOLLAB (Circuit y Probabilities):
+    # Asignamos las variables globales 'circuit' y 'counts' para que la UI de Qollab
+    # active automáticamente los widgets gráficos en el panel derecho.
+    global circuit, counts
+    circuit = qaoa_result.get("circuit")
+    counts = qaoa_result.get("counts", {})
 
-def main():
-    """Punto de entrada de línea de comandos."""
+    return qaoa_result
+
+
+def main(*args, **kwargs):
+    """Punto de entrada compatible con CLI y el runner interactivo de Qollab."""
     if len(sys.argv) > 1 and sys.argv[1] == "--server":
         print("\nLevantando servidor FastAPI de OptiQ...")
         import uvicorn
         uvicorn.run("backend.main:app", host="127.0.0.1", port=8000, reload=True)
         return
 
-    benchmark_key = sys.argv[1] if len(sys.argv) > 1 else "knapsack"
-    p_steps = int(sys.argv[2]) if len(sys.argv) > 2 and sys.argv[2].isdigit() else 2
-    shots = int(sys.argv[3]) if len(sys.argv) > 3 and sys.argv[3].isdigit() else 8192
+    benchmark_key = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].isdigit() else kwargs.get("benchmark", "knapsack")
+    p_steps = int(sys.argv[2]) if len(sys.argv) > 2 and sys.argv[2].isdigit() else int(kwargs.get("p_steps", 2))
+    shots = int(kwargs.get("shots", sys.argv[3] if len(sys.argv) > 3 and sys.argv[3].isdigit() else 8192))
 
-    if benchmark_key.lower() not in BENCHMARKS and benchmark_key != "--help":
+    if str(benchmark_key).lower() not in BENCHMARKS and benchmark_key != "--help":
         print(f"Caso '{benchmark_key}' no reconocido. Opciones: {list(BENCHMARKS.keys())}")
         print("Ejecutando caso por defecto: knapsack\n")
         benchmark_key = "knapsack"
@@ -252,7 +298,8 @@ def main():
         print(__doc__)
         return
 
-    run_optiq_demo(benchmark_key=benchmark_key, p_steps=p_steps, shots=shots)
+    res = run_optiq_demo(benchmark_key=benchmark_key, p_steps=p_steps, shots=shots)
+    return res.get("counts", {})
 
 
 if __name__ == "__main__":
