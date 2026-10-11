@@ -1,6 +1,12 @@
 import logging
 from typing import Dict, Any
-from backend.parser.minizinc_parser import MiniZincParser, ParsedModel
+try:
+    from backend.parser.minizinc_parser import MiniZincParser, ParsedModel
+except ModuleNotFoundError:
+    try:
+        from parser.minizinc_parser import MiniZincParser, ParsedModel
+    except ModuleNotFoundError:
+        from .minizinc_parser import MiniZincParser, ParsedModel
 
 logger = logging.getLogger("ProblemParser")
 

@@ -3,7 +3,7 @@ import Header from './components/Header';
 import MiniZincEditor from './components/MiniZincEditor';
 import RightTelemetryPanel from './components/RightTelemetryPanel';
 import { runQuantumSolver } from './services/quantumApi';
-
+import SubtleParticles from './components/SubtleParticles';
 const DEFAULT_CODE = `int: n = 4;
 int: capacity = 7;
 array[1..4] of int: weights = [2, 3, 4, 5];
@@ -36,14 +36,16 @@ export default function App() {
   // Active right panel tab to trigger view on run
   const [activeRightTab, setActiveRightTab] = useState('params'); // 'params', 'solution', 'console', '3d'
 
-  // QAOA Hyperparameters with manual seed angles support
+  // QAOA Hyperparameters with manual seed angles and Qiskit/Qollab backend support
   const [hyperparams, setHyperparams] = useState({
     pSteps: 3,
     shots: 8192,
     optimizer: 'COBYLA',
     angleInit: 'Automática', // 'Automática', 'Heurística', 'Manual'
     gamma0: 0.39,
-    beta0: 0.78
+    beta0: 0.78,
+    backend: 'aer_simulator', // 'aer_simulator', 'ionq_simulator', 'ionq_qpu'
+    backendConfig: null
   });
 
   // Tab Handlers
@@ -157,7 +159,10 @@ export default function App() {
   };
 
   return (
-    <div className="w-full h-screen max-h-screen bg-surface-container-lowest flex flex-col overflow-hidden select-none">
+    <div className="w-full h-screen max-h-screen bg-surface-container-lowest flex flex-col overflow-hidden select-none relative">
+      {/* Background Particles */}
+      <SubtleParticles />
+      
       {/* Top Application Header - Full width */}
       <Header />
 

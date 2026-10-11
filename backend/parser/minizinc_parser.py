@@ -2,7 +2,6 @@ import re
 import logging
 from typing import Dict, List, Any, Optional, Tuple
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("MiniZincParser")
 
 
