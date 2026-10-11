@@ -1,12 +1,11 @@
 import * as THREE from 'three';
 import { config } from '../config/config.js';
-import { data as mockDataFromEntradas } from '../../entradas/data.js';
 import { SceneManager } from './sceneManager.js';
 import { BarManager } from './barManager.js';
 import { AnimationController } from './animationController.js';
 
-// Dataset predeterminado (por defecto usa mockDataFromEntradas o fallback seguro)
-export const defaultData = mockDataFromEntradas || {
+// Dataset predeterminado (fallback seguro para pruebas independientes)
+export const defaultData = {
   nombre: "Mock 1: 2 Qubits (4 estados - 25 shots)",
   num_estados: 4,
   estados: ["00", "01", "10", "11"],

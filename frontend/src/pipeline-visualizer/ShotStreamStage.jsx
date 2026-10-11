@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { BarVisualizationApp } from '../../logica/main.js';
-import { mock3 } from '../../../entradas/data.js';
 
 export default function ShotStreamStage({ data, isPlaying, speed = 1.0, onComplete }) {
   const mountRef = useRef(null);
@@ -19,7 +18,7 @@ export default function ShotStreamStage({ data, isPlaying, speed = 1.0, onComple
     winnerCount: 0,
   });
 
-  const shotsData = data?.shots?.shotsData || mock3;
+  const shotsData = data?.shots?.shotsData || null;
   const optimalBitstring = shotState.winnerState || data?.shots?.optimalState || '1010';
   const optimalValue = data?.shots?.optimalValue !== undefined ? data.shots.optimalValue : 11.0;
   const energyMin = data?.shots?.energyMin !== undefined ? data.shots.energyMin : -11.0;
