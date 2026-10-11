@@ -6,3 +6,6 @@ qiskit-aer>=0.15.0
 qiskit-optimization>=0.6.1
 torch>=2.5.0
 numpy>=1.26.4
+pandas>=2.2.0
+scikit-learn>=1.4.0
+matplotlib>=3.8.0
