@@ -130,11 +130,6 @@ export default function App() {
     const activeTab = tabs.find((t) => t.id === activeTabId);
     const codeToRun = activeTab ? activeTab.content : '';
 
-    if (targetView === '3d' || targetStage) {
-      setPipelineInitialStage(targetStage || null);
-      setIsPipelineModalOpen(true);
-    }
-
     setIsLoading(true);
     setLoadingStep(1);
     setLoadingMessage('Sending MiniZinc model to FastAPI backend...');
@@ -153,13 +148,26 @@ export default function App() {
 
       setResult(backendResponse);
       setHasRun(true);
-      setActiveRightTab(targetView);
+
+      if (backendResponse.success) {
+        // Only open PipelineModal or switch to 3D tab on successful real execution
+        if (targetView === '3d' || targetStage) {
+          setPipelineInitialStage(targetStage || null);
+          setIsPipelineModalOpen(true);
+        }
+        setActiveRightTab(targetView);
+      } else {
+        // If code has an error, do NOT open visualizer modal and navigate to console to show error
+        setIsPipelineModalOpen(false);
+        setActiveRightTab('console');
+      }
     } catch (err) {
       setResult({
         success: false,
         error: err.message || 'Unexpected error during execution'
       });
       setHasRun(true);
+      setIsPipelineModalOpen(false);
       setActiveRightTab('console');
     } finally {
       setIsLoading(false);

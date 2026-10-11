@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import AtomLoader from './AtomLoader';
 import Visualizer3D from './Visualizer3D';
 
@@ -19,7 +19,7 @@ export default function RightTelemetryPanel({
   const [internalTab, setInternalTab] = useState(hasRun ? 'solution' : 'params');
   const [copiedState, setCopiedState] = useState(false);
   const [hoveredSample, setHoveredSample] = useState(null);
-  const [featureSubTab, setFeatureSubTab] = useState('global'); // 'global' | 'nodes' | 'edges'
+  const [featureSubTab, setFeatureSubTab] = useState('global'); // 'global' | 'nodes' | 'edges' | 'logs'
 
   const currentTab = onSelectTab ? activeTab : internalTab;
   const setTab = onSelectTab || setInternalTab;
@@ -29,6 +29,57 @@ export default function RightTelemetryPanel({
   const features = result?.features;
   const isSuccess = result?.success;
   const quboNodes = parsedSummary?.qubo_nodes || details?.qubits_count || 0;
+
+  // Initial and optimal QAOA angles calculation
+  const pLayers = details?.p_layers || hyperparams?.pSteps || 2;
+  const angleInitMethod = details?.qaoa_hyperparameters_used?.angle_init || hyperparams?.angleInit || 'Automatic';
+  const g0 = details?.qaoa_hyperparameters_used?.gamma0 ?? hyperparams?.gamma0 ?? 0.39;
+  const b0 = details?.qaoa_hyperparameters_used?.beta0 ?? hyperparams?.beta0 ?? 0.78;
+
+  const initialGammas = useMemo(() => {
+    if (details?.initial_gammas && Array.isArray(details.initial_gammas) && details.initial_gammas.length > 0) {
+      return details.initial_gammas;
+    }
+    const isManual = angleInitMethod === 'Manual';
+    const isHeuristic = angleInitMethod === 'Heurística' || angleInitMethod === 'Heuristic';
+    if (isManual) {
+      return Array(pLayers).fill(g0);
+    } else if (isHeuristic) {
+      return Array.from({ length: pLayers }, (_, k) => +(g0 * ((k + 1.0) / pLayers)).toFixed(4));
+    } else {
+      return Array.from({ length: pLayers }, (_, k) => +(g0 * (0.4 + 0.6 * ((k + 1.0) / pLayers))).toFixed(4));
+    }
+  }, [details?.initial_gammas, angleInitMethod, pLayers, g0]);
+
+  const initialBetas = useMemo(() => {
+    if (details?.initial_betas && Array.isArray(details.initial_betas) && details.initial_betas.length > 0) {
+      return details.initial_betas;
+    }
+    const isManual = angleInitMethod === 'Manual';
+    const isHeuristic = angleInitMethod === 'Heurística' || angleInitMethod === 'Heuristic';
+    if (isManual) {
+      return Array(pLayers).fill(b0);
+    } else if (isHeuristic) {
+      return Array.from({ length: pLayers }, (_, k) => +(b0 * (1.0 - k / pLayers)).toFixed(4));
+    } else {
+      return Array.from({ length: pLayers }, (_, k) => +(b0 * (1.0 - 0.7 * (k / pLayers))).toFixed(4));
+    }
+  }, [details?.initial_betas, angleInitMethod, pLayers, b0]);
+
+  const displayedLogs = useMemo(() => {
+    const rawLogs = (details?.console_logs && details.console_logs.length > 0)
+      ? [...details.console_logs]
+      : (features?.console_summary ? [...features.console_summary] : []);
+
+    const hasInitLine = rawLogs.some(
+      (l) => typeof l === 'string' && (l.includes('[INIT]') || l.includes('Ángulos iniciales') || l.includes('Initial angles'))
+    );
+    if (!hasInitLine && initialGammas.length > 0) {
+      const initLine = `[INIT] Initial QAOA Angles (${angleInitMethod}, p=${pLayers}): γ₀ = [${initialGammas.map((g) => Number(g).toFixed(4)).join(', ')}], β₀ = [${initialBetas.map((b) => Number(b).toFixed(4)).join(', ')}]`;
+      rawLogs.unshift(initLine);
+    }
+    return rawLogs;
+  }, [details?.console_logs, features?.console_summary, initialGammas, initialBetas, angleInitMethod, pLayers]);
 
   const handleCopyBitstring = () => {
     if (details?.optimal_bitstring) {
@@ -700,16 +751,54 @@ export default function RightTelemetryPanel({
 
                       {/* SUBTAB 4: LOGS */}
                       {featureSubTab === 'logs' && (
-                        <div className="bg-surface-container-lowest p-2 rounded-lg border border-outline-variant/40 max-h-48 overflow-y-auto text-[10px] space-y-1 text-on-surface-variant font-mono">
-                          {((details?.console_logs && details.console_logs.length > 0)
-                            ? details.console_logs
-                            : (features?.console_summary || [])
-                          ).map((line, idx) => (
-                            <div key={idx} className="leading-relaxed">
-                              <span className="text-outline mr-1.5">&gt;</span>
-                              {line}
+                        <div className="space-y-2">
+                          {/* Dedicated Initial QAOA Angles Panel */}
+                          <div className="bg-surface-container-low/80 p-2.5 rounded-lg border border-outline-variant/50 space-y-2 font-sans">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] uppercase font-bold text-primary flex items-center gap-1.5">
+                                <span className="material-symbols-outlined text-[14px]">tune</span>
+                                Initial QAOA Angles (γ₀, β₀)
+                              </span>
+                              <span className="text-[9px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium font-mono">
+                                {angleInitMethod} • p = {pLayers}
+                              </span>
                             </div>
-                          ))}
+
+                            <div className="grid grid-cols-2 gap-2 text-[10px]">
+                              <div className="bg-surface-container-lowest p-2 rounded-md border border-outline-variant/30 flex flex-col">
+                                <span className="text-outline text-[9px] font-medium mb-0.5">Initial Cost Angles (γ₀):</span>
+                                <span className="font-mono font-bold text-tertiary">
+                                  [{initialGammas.map((g) => Number(g).toFixed(4)).join(', ')}]
+                                </span>
+                                <span className="text-[8px] text-outline mt-0.5">rad / layer</span>
+                              </div>
+
+                              <div className="bg-surface-container-lowest p-2 rounded-md border border-outline-variant/30 flex flex-col">
+                                <span className="text-outline text-[9px] font-medium mb-0.5">Initial Mixer Angles (β₀):</span>
+                                <span className="font-mono font-bold text-secondary">
+                                  [{initialBetas.map((b) => Number(b).toFixed(4)).join(', ')}]
+                                </span>
+                                <span className="text-[8px] text-outline mt-0.5">rad / layer</span>
+                              </div>
+                            </div>
+
+                            {details?.optimal_gammas && details.optimal_gammas.length > 0 && (
+                              <div className="bg-surface-container-lowest/80 px-2 py-1.5 rounded border border-outline-variant/20 flex flex-wrap items-center justify-between gap-1 text-[9px] font-mono text-outline">
+                                <span>Optimized γ*: [{details.optimal_gammas.map((g) => Number(g).toFixed(4)).join(', ')}]</span>
+                                <span>Optimized β*: [{details.optimal_betas.map((b) => Number(b).toFixed(4)).join(', ')}]</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Raw Console Logs Stream */}
+                          <div className="bg-surface-container-lowest p-2 rounded-lg border border-outline-variant/40 max-h-36 overflow-y-auto text-[10px] space-y-1 text-on-surface-variant font-mono">
+                            {displayedLogs.map((line, idx) => (
+                              <div key={idx} className="leading-relaxed">
+                                <span className="text-outline mr-1.5">&gt;</span>
+                                {line}
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -728,15 +817,50 @@ export default function RightTelemetryPanel({
             {/* ================= TAB 3: 3D VISUALIZATION ================= */}
             {currentTab === '3d' && (
               <div className="flex-1 flex flex-col min-h-[260px]">
-                <div className="flex-1 rounded-lg overflow-hidden border border-outline-variant/40 relative bg-surface-container-lowest">
-                  <Visualizer3D
-                    qubits={quboNodes > 0 ? quboNodes : 6}
-                    bitstring={details?.optimal_bitstring || '1001'}
-                  />
-                </div>
-                <div className="mt-2 text-center text-[11px] text-outline font-mono">
-                  Drag to rotate the 3D topology
-                </div>
+                {!hasRun ? (
+                  <div className="flex-1 flex flex-col items-center justify-center py-10 text-center text-outline">
+                    <span className="material-symbols-outlined text-[36px] opacity-40 mb-2 text-primary">
+                      view_in_ar
+                    </span>
+                    <p className="text-xs font-semibold text-on-surface-variant">No 3D visualization computed</p>
+                    <p className="text-[11px] max-w-xs mt-1 text-outline">
+                      Press <strong className="text-primary font-medium">RUN &amp; VISUALIZE</strong> to solve a valid model and render the 3D quantum Hamiltonian topology.
+                    </p>
+                  </div>
+                ) : !isSuccess ? (
+                  <div className="flex-1 flex flex-col items-center justify-center p-4 bg-error/5 border border-error/20 rounded-xl text-center my-auto">
+                    <div className="flex items-center justify-center gap-1.5 font-semibold text-xs text-error mb-1.5">
+                      <span className="material-symbols-outlined text-[18px]">error</span>
+                      <span>Cannot render 3D visualization</span>
+                    </div>
+                    <p className="text-[11px] text-on-surface-variant mb-2 max-w-xs">
+                      The model contains syntax or compilation errors and could not be executed by the backend.
+                    </p>
+                    <div className="w-full text-[10px] bg-error/10 p-2 rounded text-error text-left font-mono break-words">
+                      {result?.error || 'Syntax or parse error in MiniZinc code.'}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setTab('console')}
+                      className="mt-3 px-3 py-1 bg-surface-container-low hover:bg-surface-container text-primary rounded-lg text-[11px] font-sans font-medium transition-colors border border-outline-variant/60 cursor-pointer inline-flex items-center gap-1"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">terminal</span>
+                      <span>View Error in Console</span>
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex-1 rounded-lg overflow-hidden border border-outline-variant/40 relative bg-surface-container-lowest">
+                      <Visualizer3D
+                        qubits={quboNodes > 0 ? quboNodes : 4}
+                        bitstring={details?.optimal_bitstring || '0'}
+                      />
+                    </div>
+                    <div className="mt-2 text-center text-[11px] text-outline font-mono">
+                      Drag to rotate the 3D topology
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
