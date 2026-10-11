@@ -117,7 +117,7 @@ cd backend
 pip install -r requirements.txt
 
 # Iniciar el servidor FastAPI (servirá en http://127.0.0.1:8000)
-python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
+python -m uvicorn main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 ### 3. Configurar e Iniciar el Frontend (React + Vite)
