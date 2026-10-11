@@ -68,6 +68,7 @@ export default function RightTelemetryPanel({
           <span className="material-symbols-outlined text-[19px]">play_arrow</span>
           <span>RUN</span>
         </button>
+
       </div>
 
       {/* Runtime Parameter Capsule Bar */}
@@ -193,6 +194,7 @@ export default function RightTelemetryPanel({
                 <span className="material-symbols-outlined text-[15px]">view_in_ar</span>
                 <span>3D</span>
               </button>
+
 
               {/* Tab 4: QAOA Hyperparameters */}
               <button
@@ -737,6 +739,7 @@ export default function RightTelemetryPanel({
                 </div>
               </div>
             )}
+
 
             {/* ================= TAB 4: HIPERPARÁMETROS QAOA ================= */}
             {currentTab === 'params' && (

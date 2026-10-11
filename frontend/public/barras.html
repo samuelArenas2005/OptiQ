@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OptiQ - Gráfica de Barras 3D por Shots</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #060913;
+      --panel-bg: rgba(15, 23, 42, 0.90);
+      --panel-border: rgba(56, 189, 248, 0.25);
+      --accent-cyan: #38bdf8;
+      --font-sans: 'Outfit', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body, html { width: 100%; height: 100%; overflow: hidden; background: var(--bg-primary); font-family: var(--font-sans); color: #fff; }
+    #canvas-container { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; }
+    .hud-layer { position: absolute; inset: 0; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; }
+    .winner-banner { display: none; align-self: center; pointer-events: auto; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 0.85rem; font-weight: 700; color: #050a14; background: #ffea00; border: 2px solid #fff566; border-radius: 14px; padding: 8px 18px; box-shadow: 0 0 24px rgba(255, 234, 0, 0.7); animation: bounce-winner 1.2s infinite alternate ease-in-out; }
+    @keyframes bounce-winner { 0% { transform: translateY(0); } 100% { transform: translateY(-4px); } }
+    .bottom-controls-panel { pointer-events: auto; align-self: center; display: flex; flex-direction: column; align-items: center; gap: 8px; background: var(--panel-bg); backdrop-filter: blur(16px); border: 1px solid var(--panel-border); border-radius: 16px; padding: 10px 20px; box-shadow: 0 16px 40px rgba(0,0,0,0.6); }
+    .controls-row { display: flex; align-items: center; gap: 14px; }
+    .shot-label { font-family: var(--font-mono); font-size: 0.85rem; font-weight: 600; color: #94a3b8; }
+    .shot-number { color: #fff; font-weight: 700; font-size: 1rem; }
+    .hud-btn { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #fff; border-radius: 8px; padding: 6px 14px; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 6px; }
+    .hud-btn:hover { background: rgba(56,189,248,0.2); border-color: var(--accent-cyan); }
+    .hud-btn.primary { background: linear-gradient(135deg, #0284c7, #0369a1); border-color: var(--accent-cyan); }
+    .hud-btn.icon-btn { padding: 6px 8px; }
+    .speed-selector { display: flex; background: rgba(0,0,0,0.4); border-radius: 8px; padding: 2px; border: 1px solid rgba(255,255,255,0.08); }
+    .speed-chip { background: transparent; border: none; color: #94a3b8; font-family: var(--font-mono); font-size: 0.75rem; font-weight: 600; padding: 4px 8px; border-radius: 6px; cursor: pointer; }
+    .speed-chip.active { background: rgba(56,189,248,0.25); color: var(--accent-cyan); }
+    .navigation-hint { font-size: 0.7rem; color: #94a3b8; font-family: var(--font-mono); opacity: 0.7; }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="canvas-container"></div>
+  <div class="hud-layer">
+    <!-- Solo conserva el mensaje de estado ganador al llegar al final -->
+    <div id="winner-badge" class="winner-banner">
+      👑 ESTADO GANADOR: |X⟩ (0 disparos)
+    </div>
+
+    <footer class="bottom-controls-panel">
+      <div class="controls-row">
+        <div class="shot-label">
+          SHOT: <span id="current-epoch-txt" class="shot-number">01</span> / <span id="total-epochs-txt">1024</span>
+        </div>
+
+        <button id="btn-toggle" class="hud-btn primary">
+          <span id="play-pause-icon">⏸ Pausar</span>
+        </button>
+
+        <button id="btn-reload" class="hud-btn icon-btn" title="Reiniciar al Shot 1">
+          <svg style="width: 14px; height: 14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+            <path d="M3 3v5h5" />
+          </svg>
+        </button>
+
+        <div class="speed-selector">
+          <button class="speed-chip" data-speed="0.5">0.5x</button>
+          <button class="speed-chip active" data-speed="1.0">1.0x</button>
+          <button class="speed-chip" data-speed="2.0">2.0x</button>
+        </div>
+      </div>
+
+      <div class="navigation-hint">
+        🖱️ Arrastrar: Rotar cámara • Rueda: Zoom • Clic derecho: Desplazar
+      </div>
+    </footer>
+  </div>
+
+  <script type="module">
+    import { BarVisualizationApp, defaultData } from '/logica/main.js';
+
+    const app = new BarVisualizationApp('canvas-container', defaultData);
+    const currentEpochTxt = document.getElementById('current-epoch-txt');
+    const totalEpochsTxt = document.getElementById('total-epochs-txt');
+    const winnerBadge = document.getElementById('winner-badge');
+    const btnToggle = document.getElementById('btn-toggle');
+    const btnReload = document.getElementById('btn-reload');
+    const playPauseIcon = document.getElementById('play-pause-icon');
+    const speedChips = document.querySelectorAll('.speed-chip');
+
+    app.setUIListener((event) => {
+      if (event.type === 'tick') {
+        const epFormatted = String(event.shotIndex + 1);
+        const totFormatted = String(event.totalShots);
+        if (currentEpochTxt.textContent !== epFormatted) {
+          currentEpochTxt.textContent = epFormatted;
+          totalEpochsTxt.textContent = totFormatted;
+        }
+
+        const isLastEpoch = event.shotIndex === event.totalShots - 1;
+        const winner = event.winner;
+        if (isLastEpoch && winner) {
+          winnerBadge.style.display = 'inline-flex';
+          winnerBadge.textContent = `👑 ESTADO GANADOR: |${winner.state}⟩ (${winner.count} disparos)`;
+        } else {
+          winnerBadge.style.display = 'none';
+        }
+
+        if (event.isPlaying !== undefined) {
+          playPauseIcon.textContent = event.isPlaying ? '⏸ Pausar' : '▶ Reanudar';
+          btnToggle.classList.toggle('primary', event.isPlaying);
+        }
+      }
+    });
+
+    btnToggle.addEventListener('click', () => {
+      const isPlaying = app.animationController.togglePlay();
+      playPauseIcon.textContent = isPlaying ? '⏸ Pausar' : '▶ Reanudar';
+      btnToggle.classList.toggle('primary', isPlaying);
+    });
+
+    btnReload.addEventListener('click', () => {
+      app.animationController.reset();
+      playPauseIcon.textContent = '⏸ Pausar';
+      btnToggle.classList.add('primary');
+    });
+
+    speedChips.forEach((chip) => {
+      chip.addEventListener('click', () => {
+        speedChips.forEach((c) => c.classList.remove('active'));
+        chip.classList.add('active');
+        app.animationController.setSpeed(parseFloat(chip.dataset.speed));
+      });
+    });
+  </script>
+</body>
+</html>
