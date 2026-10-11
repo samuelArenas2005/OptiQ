@@ -107,6 +107,7 @@ async def solve_problem(request: ProblemRequest):
             "variables_count": len(binary_problem.parsed_model.variables),
             "variables": list(binary_problem.parsed_model.variables.keys()),
             "constraints_count": len(binary_problem.parsed_model.constraints),
+            "constraints": binary_problem.parsed_model.constraints,
             "qubo_nodes": binary_problem.topology.get("nodes", 0),
             "qubo_variables": binary_problem.topology.get("variables", []),
             "objective": binary_problem.parsed_model.objective
@@ -121,6 +122,9 @@ async def solve_problem(request: ProblemRequest):
             "energy": qaoa_results.get("energy", 0.0),
             "state_probability": qaoa_results.get("state_probability", "0%"),
             "distribution": qaoa_results.get("distribution", []),
+            "counts": qaoa_results.get("counts", {}),
+            "shots": qaoa_results.get("shots", hyperparams["shots"]),
+            "p_layers": qaoa_results.get("p_layers", hyperparams["p_steps"]),
             "execution_time_ms": qaoa_results.get("execution_time_ms", 0.0),
             "qubits_count": qaoa_results.get("qubits_count", 0),
             "circuit_depth": qaoa_results.get("circuit_depth", 0),
