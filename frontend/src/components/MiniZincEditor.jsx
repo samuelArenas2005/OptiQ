@@ -86,7 +86,7 @@ export default function MiniZincEditor({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = activeTab?.name || 'modelo.mzn';
+    link.download = activeTab?.name || 'model.mzn';
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -128,7 +128,7 @@ export default function MiniZincEditor({
                       onCloseTab(tab.id);
                     }}
                     className="w-4 h-4 rounded hover:bg-surface-container flex items-center justify-center text-outline hover:text-error transition-colors ml-1"
-                    title="Cerrar pestaña"
+                    title="Close tab"
                   >
                     <span className="material-symbols-outlined text-[12px]">close</span>
                   </button>
@@ -142,7 +142,7 @@ export default function MiniZincEditor({
             <button
               onClick={onAddTab}
               className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center text-outline hover:text-primary transition-colors cursor-pointer ml-1 mb-1 shrink-0"
-              title="Nueva pestaña vacía (máx 5)"
+              title="New empty tab (max 5)"
             >
               <span className="material-symbols-outlined text-[16px]">add</span>
             </button>
@@ -157,10 +157,10 @@ export default function MiniZincEditor({
               type="button"
               onClick={() => setShowExamplesMenu((prev) => !prev)}
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-sans font-medium text-primary hover:bg-primary/10 bg-surface-container-lowest border border-outline-variant/70 shadow-sm transition-all cursor-pointer select-none"
-              title="Añadir archivo con código de ejemplo de Programación Entera Binaria"
+              title="Add a Binary Integer Programming example file"
             >
               <span className="material-symbols-outlined text-[15px]">code_blocks</span>
-              <span>+ Ejemplo BIP</span>
+              <span>+ BIP Example</span>
               <span className="material-symbols-outlined text-[13px] opacity-70">
                 {showExamplesMenu ? 'expand_less' : 'expand_more'}
               </span>
@@ -170,8 +170,8 @@ export default function MiniZincEditor({
             {showExamplesMenu && (
               <div className="absolute right-0 top-full mt-1.5 w-72 bg-surface-container-lowest border border-outline-variant/80 rounded-xl shadow-xl z-50 py-1.5 overflow-hidden animate-in fade-in duration-150">
                 <div className="px-3 py-1.5 text-[10px] uppercase font-semibold text-outline tracking-wider border-b border-outline-variant/40 flex items-center justify-between">
-                  <span>Modelos BIP (0/1 Binarios)</span>
-                  <span className="font-mono text-primary font-normal">5 problemas</span>
+                  <span>BIP Models (0/1 Binary)</span>
+                  <span className="font-mono text-primary font-normal">5 problems</span>
                 </div>
                 <div className="max-h-72 overflow-y-auto">
                   {BIP_EXAMPLES.map((example) => (
@@ -205,7 +205,7 @@ export default function MiniZincEditor({
           {/* Clean Functional Toolbar Actions (Remaining file_open and save) */}
           <label
             className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
-            title="Abrir archivo (.mzn, .dzn, .txt)"
+            title="Open file (.mzn, .dzn, .txt)"
           >
             <span className="material-symbols-outlined text-[17px]">file_open</span>
             <input
@@ -219,7 +219,7 @@ export default function MiniZincEditor({
           <button
             onClick={handleSaveFile}
             className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
-            title="Guardar archivo en disco"
+            title="Save file to disk"
           >
             <span className="material-symbols-outlined text-[17px]">save</span>
           </button>
@@ -231,12 +231,12 @@ export default function MiniZincEditor({
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-1.5 text-on-surface-variant font-label-sm text-xs">
             <span className="material-symbols-outlined text-[15px] text-primary">attachment</span>
-            <span className="font-medium">Archivos de Procesamiento:</span>
+            <span className="font-medium">Processing Files:</span>
           </div>
 
           {attachedFiles.length === 0 ? (
             <span className="text-xs text-outline italic">
-              Sin archivos vinculados (.dzn, .json, .csv)
+              No linked files (.dzn, .json, .csv)
             </span>
           ) : (
             attachedFiles.map((file) => (
@@ -254,7 +254,7 @@ export default function MiniZincEditor({
                 <button
                   onClick={() => onRemoveAttachedFile(file.id)}
                   className="w-4 h-4 flex items-center justify-center text-outline hover:text-error transition-colors cursor-pointer ml-0.5"
-                  title="Desvincular archivo"
+                  title="Unlink file"
                 >
                   <span className="material-symbols-outlined text-[12px]">close</span>
                 </button>
@@ -266,7 +266,7 @@ export default function MiniZincEditor({
         <div>
           <label className="flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-surface-container-lowest hover:bg-surface-container border border-outline-variant/60 text-on-surface hover:text-primary text-xs font-medium transition-colors cursor-pointer shadow-sm">
             <span className="material-symbols-outlined text-[15px] text-primary">add</span>
-            <span>Adjuntar archivo</span>
+            <span>Attach file</span>
             <input
               ref={paramFileInputRef}
               type="file"
@@ -318,7 +318,7 @@ export default function MiniZincEditor({
             onKeyDown={handleKeyDown}
             onScroll={handleScroll}
             wrap="off"
-            placeholder="% Escribe tu modelo declarativo MiniZinc aquí..."
+            placeholder="% Write your declarative MiniZinc model here..."
             className="absolute inset-0 w-full h-full editor-font-sync editor-textarea-sync overflow-auto z-10"
             spellCheck="false"
             autoCapitalize="off"
@@ -343,7 +343,7 @@ function formatSyntaxLine(line) {
   }
 
   // Token regex capturing MiniZinc keywords, types, numbers, strings, comments and operators
-  const TOKEN_REGEX = /(\b(?:int|float|bool|set|array|of|var|par|qreg|solve|maximize|minimize|satisfy|constraint|include|output|sum|q_sum|forall|exists|in|QAOA|quantum_ansatz|cost_hamiltonian|mixer)\b|\b\d+(?:\.\d+)?\b|%[^\n]*|\/\/[^\n]*|"(?:[^"\\]|\\.)*"|\.\.|[=;:,+\-*/()[\]{}<>.&|^~]+|\s+)/g;
+  const TOKEN_REGEX = /(\b(?:int|float|bool|set|array|of|var|par|qreg|solve|maximize|minimize|satisfy|constraint|include|output|sum|q_sum|forall|exists|in|QAOA|quantum_ansatz|cost_hamiltonian|mixer)\b|\b\d+(?:\.\d+)?\b|%[^\n]*|\/\/[^\n]*|"(?:[^"\\]|\\.)*"|\.\.|[=;:,+\-*/()[\]{}<>.\&|^~]+|\s+)/g;
 
   const parts = line.split(TOKEN_REGEX);
 
@@ -423,7 +423,7 @@ function formatSyntaxLine(line) {
     }
 
     // Range '..' or Operators
-    if (token === '..' || /^[=;:,+\-*/()[\]{}<>.&|^~]+$/.test(token)) {
+    if (token === '..' || /^[=;:,+\-*/()[\]{}<>.\&|^~]+$/.test(token)) {
       return (
         <span key={idx} style={{ color: '#334155' }}>
           {token}

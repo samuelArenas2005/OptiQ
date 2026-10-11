@@ -1,39 +1,39 @@
 /**
- * mockData.js - Dataset completo y riguroso para la simulación cuántica end-to-end
- * Modela con fidelidad matemática y física el flujo:
- * MiniZinc -> AST Parse -> QUBO Graph -> Features Espectrales -> PINN -> QAOA Composer -> Shots
+ * mockData.js - Complete and rigorous dataset for end-to-end quantum simulation
+ * Mathematically models the complete pipeline:
+ * MiniZinc -> AST Parse -> QUBO Graph -> Spectral Features -> PINN -> QAOA Composer -> Shots
  */
 
 export const PIPELINE_MOCK_DATA = {
-  // 1. CÓDIGO MINIZINC Y TOKENS PARSEADOS
+  // 1. MINIZINC CODE AND PARSED TOKENS
   code: {
     raw: `% OptiQ - Binary Integer Programming (BIP)
-% Problema de Asignación Cuántica & Mochila
+% Quantum Knapsack & Assignment Problem
 var bool: x1; % Qubit q0
 var bool: x2; % Qubit q1
 var bool: x3; % Qubit q2
 var bool: x4; % Qubit q3
 
-% Restricción de Capacidad
+% Capacity Constraint
 constraint 2*x1 + 3*x2 + 4*x3 + 2*x4 <= 6;
 
-% Restricción de Exclusión Mutua
+% Mutual Exclusion Constraint
 constraint x1 + x3 <= 1;
 
-% Función Objetivo de Maximización
+% Maximization Objective Function
 solve maximize 5*x1 + 4*x2 + 7*x3 + 3*x4;`,
     lines: [
       { num: 1, text: "% OptiQ - Binary Integer Programming (BIP)", type: "comment" },
-      { num: 2, text: "% Problema de Asignación Cuántica & Mochila", type: "comment" },
+      { num: 2, text: "% Quantum Knapsack & Assignment Problem", type: "comment" },
       { num: 3, text: "var bool: x1;", type: "var", varName: "x1", qubit: "q0", domain: "{0, 1}" },
       { num: 4, text: "var bool: x2;", type: "var", varName: "x2", qubit: "q1", domain: "{0, 1}" },
       { num: 5, text: "var bool: x3;", type: "var", varName: "x3", qubit: "q2", domain: "{0, 1}" },
       { num: 6, text: "var bool: x4;", type: "var", varName: "x4", qubit: "q3", domain: "{0, 1}" },
       { num: 7, text: "", type: "empty" },
-      { num: 8, text: "% Restricción de Capacidad", type: "comment" },
+      { num: 8, text: "% Capacity Constraint", type: "comment" },
       { num: 9, text: "constraint 2*x1 + 3*x2 + 4*x3 + 2*x4 <= 6;", type: "constraint", id: "C1", terms: { x1: 2, x2: 3, x3: 4, x4: 2 }, op: "<=", rhs: 6 },
       { num: 10, text: "", type: "empty" },
-      { num: 11, text: "% Restricción de Exclusión Mutua", type: "comment" },
+      { num: 11, text: "% Mutual Exclusion Constraint", type: "comment" },
       { num: 12, text: "constraint x1 + x3 <= 1;", type: "constraint", id: "C2", terms: { x1: 1, x3: 1 }, op: "<=", rhs: 1 },
       { num: 13, text: "", type: "empty" },
       { num: 14, text: "solve maximize 5*x1 + 4*x2 + 7*x3 + 3*x4;", type: "objective", sense: "maximize", weights: { x1: 5, x2: 4, x3: 7, x4: 3 } }
@@ -48,7 +48,7 @@ solve maximize 5*x1 + 4*x2 + 7*x3 + 3*x4;`,
     domain: "Binary Integer Programming (BIP)"
   },
 
-  // 2. GRAFO DE ACOPLAMIENTOS Y FORMULACIÓN QUBO
+  // 2. COUPLING GRAPH AND QUBO FORMULATION
   qubo: {
     nodes: [
       { id: 0, label: "x₁ (q₀)", degree: 3, h_i: -3.20, color: "#38bdf8", x: -2.2, y: 1.5, z: 0 },
@@ -58,7 +58,7 @@ solve maximize 5*x1 + 4*x2 + 7*x3 + 3*x4;`,
     ],
     edges: [
       { u: 0, v: 1, J_ij: 3.50, type: "antiferromagnetic", label: "J₀₁ = +3.50" },
-      { u: 0, v: 2, J_ij: 4.80, type: "antiferromagnetic", label: "J₀₂ = +4.80 (Exclusión)" },
+      { u: 0, v: 2, J_ij: 4.80, type: "antiferromagnetic", label: "J₀₂ = +4.80 (Exclusion)" },
       { u: 1, v: 2, J_ij: 2.90, type: "antiferromagnetic", label: "J₁₂ = +2.90" },
       { u: 2, v: 3, J_ij: 2.40, type: "antiferromagnetic", label: "J₂₃ = +2.40" },
       { u: 0, v: 3, J_ij: 1.60, type: "antiferromagnetic", label: "J₀₃ = +1.60" }
@@ -69,56 +69,56 @@ solve maximize 5*x1 + 4*x2 + 7*x3 + 3*x4;`,
       [ 4.80,  2.90, -4.10,  2.40],
       [ 1.60,  0.00,  2.40, -1.45]
     ],
-    formula: "H_C = \\sum_{i} h_i Z_i + \\sum_{(i,j)} J_{ij} Z_i Z_j + \\lambda_{penalización} \\sum_k (\\text{Restricción}_k)^2",
+    formula: "H_C = \\sum_{i} h_i Z_i + \\sum_{(i,j)} J_{ij} Z_i Z_j + \\lambda_{penalty} \\sum_k (\\text{Constraint}_k)^2",
     penaltyLambda: 8.5
   },
 
-  // 3. FEATURES TOPOLÓGICAS Y FÍSICO-ESPECTRALES (100% REALES DEL SISTEMA)
+  // 3. TOPOLOGICAL AND SPECTRAL PHYSICAL FEATURES
   features: {
-    density: 0.8333,                    // 2*|E| / (|V|*(|V|-1)) = 10 / 12 = 0.8333
-    spectralGapLambda2: 1.4382,         // Conectividad algebraica Laplaciana
-    spectralRadius: 4.8210,             // Mayor autovalor Laplaciano
-    frustrationIndex: 0.2480,           // 24.8% Frustración antiferromagnética
-    clauseVarRatio: 1.25,               // |E| / |V| = 5 / 4
+    density: 0.8333,
+    spectralGapLambda2: 1.4382,
+    spectralRadius: 4.8210,
+    frustrationIndex: 0.2480,
+    clauseVarRatio: 1.25,
     numVariables: 4,
     numInteractions: 5,
     hStats: { mean: -2.65, variance: 1.24, min: -4.10, max: -1.45 },
     JStats: { mean: 3.04, variance: 1.15, min: 1.60, max: 4.80 },
     featureVector: [
-      { name: "Densidad del Grafo (ρ)", value: 0.8333, unit: "", desc: "Densidad de acoplamientos cuadráticos" },
-      { name: "Gap Espectral (λ₂)", value: 1.4382, unit: "rad", desc: "Velocidad de propagación cuántica" },
-      { name: "Radio Espectral (λ_max)", value: 4.8210, unit: "rad", desc: "Cota de energía máxima del Laplaciano" },
-      { name: "Índice de Frustración (χ)", value: 0.2480, unit: "%", desc: "Frustración en ciclos impares de espín" },
-      { name: "Ratio Cláusulas/Var (E/V)", value: 1.2500, unit: "", desc: "Grado promedio de constricción" },
-      { name: "Media Campos h (μ_h)", value: -2.6500, unit: "eV", desc: "Tendencia neta de polarización Z" },
-      { name: "Media Acoplamientos J (μ_J)", value: 3.0400, unit: "eV", desc: "Magnitud media antiferromagnética" },
-      { name: "Varianza Acoplamientos (σ²_J)", value: 1.1500, unit: "eV²", desc: "Dispersión energética de enlaces" }
+      { name: "Graph Density (ρ)", value: 0.8333, unit: "", desc: "Quadratic coupling density" },
+      { name: "Spectral Gap (λ₂)", value: 1.4382, unit: "rad", desc: "Quantum propagation speed" },
+      { name: "Spectral Radius (λ_max)", value: 4.8210, unit: "rad", desc: "Maximum Laplacian energy bound" },
+      { name: "Frustration Index (χ)", value: 0.2480, unit: "%", desc: "Frustration across odd spin loops" },
+      { name: "Clause/Var Ratio (E/V)", value: 1.2500, unit: "", desc: "Average constraint degree" },
+      { name: "Mean h Fields (μ_h)", value: -2.6500, unit: "eV", desc: "Net Z polarization bias" },
+      { name: "Mean J Couplings (μ_J)", value: 3.0400, unit: "eV", desc: "Average antiferromagnetic magnitude" },
+      { name: "Coupling Variance (σ²_J)", value: 1.1500, unit: "eV²", desc: "Bond energy dispersion" }
     ]
   },
 
-  // 4. RED NEURONAL INFORMADA POR FÍSICA (PINN)
+  // 4. PHYSICS-INFORMED NEURAL NETWORK (PINN)
   pinn: {
     architecture: {
       layers: [8, 16, 12, 4],
-      layerNames: ["Features Físicas (8)", "Capa Oculta 1 (16)", "Capa Oculta 2 (12)", "Hiperparámetros QAOA (4)"]
+      layerNames: ["Physical Features (8)", "Hidden Layer 1 (16)", "Hidden Layer 2 (12)", "QAOA Hyperparameters (4)"]
     },
     lossPhysics: 0.0142,
     lossData: 0.0089,
     epochsTrained: 500,
     optimizer: "AdamW + Physics Regularizer",
     predictions: {
-      gamma: [0.3927, 0.7854], // gamma_1 = pi/8, gamma_2 = pi/4
-      beta:  [0.5236, 0.2618], // beta_1 = pi/6,  beta_2 = pi/12
+      gamma: [0.3927, 0.7854],
+      beta:  [0.5236, 0.2618],
       formatted: [
-        { name: "γ₁ (Costo Capa 1)", value: "0.3927 rad (π/8)", raw: 0.3927 },
-        { name: "β₁ (Mixer Capa 1)", value: "0.5236 rad (π/6)", raw: 0.5236 },
-        { name: "γ₂ (Costo Capa 2)", value: "0.7854 rad (π/4)", raw: 0.7854 },
-        { name: "β₂ (Mixer Capa 2)", value: "0.2618 rad (π/12)", raw: 0.2618 }
+        { name: "γ₁ (Layer 1 Cost)", value: "0.3927 rad (π/8)", raw: 0.3927 },
+        { name: "β₁ (Layer 1 Mixer)", value: "0.5236 rad (π/6)", raw: 0.5236 },
+        { name: "γ₂ (Layer 2 Cost)", value: "0.7854 rad (π/4)", raw: 0.7854 },
+        { name: "β₂ (Layer 2 Mixer)", value: "0.2618 rad (π/12)", raw: 0.2618 }
       ]
     }
   },
 
-  // 5. CIRCUITO QAOA Y QUANTUM COMPOSER
+  // 5. QAOA QUANTUM CIRCUIT COMPOSER
   circuit: {
     pLayers: 2,
     qubitsCount: 4,
@@ -126,8 +126,8 @@ solve maximize 5*x1 + 4*x2 + 7*x3 + 3*x4;`,
     stages: [
       {
         id: "superposition",
-        title: "Estado Inicial |+⟩ⁿ",
-        desc: "Superposición uniforme aplicando compuertas Hadamard H en todos los qubits",
+        title: "Initial State |+⟩ⁿ",
+        desc: "Uniform superposition achieved by applying Hadamard gates H across all qubits",
         gates: [
           { type: "H", target: 0, label: "H" },
           { type: "H", target: 1, label: "H" },
@@ -137,8 +137,8 @@ solve maximize 5*x1 + 4*x2 + 7*x3 + 3*x4;`,
       },
       {
         id: "cost_layer_1",
-        title: "Capa Hamiltoniano de Costo U_C(γ₁)",
-        desc: "Evolución unitaria e^{-i γ₁ H_C} con compuertas R_ZZ(2γ₁ J_ij) y R_Z(2γ₁ h_i)",
+        title: "Cost Hamiltonian Layer U_C(γ₁)",
+        desc: "Unitary evolution e^{-i γ₁ H_C} via R_ZZ(2γ₁ J_ij) and R_Z(2γ₁ h_i) gates",
         gates: [
           { type: "RZZ", control: 0, target: 1, angle: "2γ₁ J₀₁", label: "R_ZZ" },
           { type: "RZZ", control: 0, target: 2, angle: "2γ₁ J₀₂", label: "R_ZZ" },
@@ -152,8 +152,8 @@ solve maximize 5*x1 + 4*x2 + 7*x3 + 3*x4;`,
       },
       {
         id: "mixer_layer_1",
-        title: "Capa Mezcladora Pauli-X U_M(β₁)",
-        desc: "Rotaciones transversales e^{-i β₁ \\sum X_i} con compuertas R_X(2β₁)",
+        title: "Pauli-X Mixer Layer U_M(β₁)",
+        desc: "Transverse rotations e^{-i β₁ \\sum X_i} with R_X(2β₁) gates",
         gates: [
           { type: "RX", target: 0, angle: "2β₁", label: "R_X" },
           { type: "RX", target: 1, angle: "2β₁", label: "R_X" },
@@ -163,8 +163,8 @@ solve maximize 5*x1 + 4*x2 + 7*x3 + 3*x4;`,
       },
       {
         id: "measurement",
-        title: "Medición Proyectiva M",
-        desc: "Colapso cuántico en base computacional Z hacia registro clásico de 4 bits",
+        title: "Projective Measurement M",
+        desc: "Quantum state collapse in computational Z-basis onto classical 4-bit register",
         gates: [
           { type: "M", target: 0, label: "M" },
           { type: "M", target: 1, label: "M" },
@@ -175,7 +175,7 @@ solve maximize 5*x1 + 4*x2 + 7*x3 + 3*x4;`,
     ]
   },
 
-  // 6. STREAM DE SHOTS Y CONVERGENCIA A LA SOLUCIÓN ÓPTIMA
+  // 6. SHOT STREAM AND CONVERGENCE TO OPTIMAL SOLUTION
   shots: {
     totalShots: 1024,
     optimalState: "1010",

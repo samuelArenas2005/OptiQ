@@ -1,8 +1,8 @@
 /**
- * quantumApi.js - Interacción directa y optimizada con el backend FastAPI (router.py)
+ * quantumApi.js - Direct and optimized interaction with the FastAPI backend (router.py)
  */
 
-// Configuración dinámica de la URL del backend mediante variables de entorno Vite
+// Dynamic backend URL configuration via Vite environment variables
 const rawEnvUrl = import.meta.env?.VITE_API_URL || import.meta.env?.VITE_BACKEND_URL;
 
 export const API_BASE = (() => {
@@ -19,21 +19,21 @@ export async function runQuantumSolver(code, options = {}, onProgress = () => {}
     shots = 8192,
     pSteps = 2,
     optimizer = 'COBYLA',
-    angleInit = 'Automática',
+    angleInit = 'Automatic',
     gamma0 = 0.39,
     beta0 = 0.78,
     backend = null,
     backendConfig = null
   } = options;
 
-  onProgress({ step: 1, message: 'Enviando modelo MiniZinc y ejecutando pipeline concurrente...' });
+  onProgress({ step: 1, message: 'Sending MiniZinc model and running concurrent pipeline...' });
 
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 60000);
 
     const progressTimer = setTimeout(() => {
-      onProgress({ step: 3, message: 'Extrayendo features espectrales y optimizando circuito QAOA...' });
+      onProgress({ step: 3, message: 'Extracting spectral features and optimizing QAOA circuit...' });
     }, 150);
 
     const response = await fetch(`${API_BASE}/solve`, {
@@ -59,20 +59,21 @@ export async function runQuantumSolver(code, options = {}, onProgress = () => {}
 
     if (response.ok) {
       const data = await response.json();
-      onProgress({ step: 4, message: 'Solución cuántica obtenida con éxito.' });
+      onProgress({ step: 4, message: 'Quantum solution obtained successfully.' });
       return {
         success: true,
-        message: data.message || 'Problema parseado y resuelto con éxito.',
+        message: data.message || 'Problem parsed and solved successfully.',
         parsedSummary: data.parsed_summary || null,
         features: data.features || null,
+        pinn: data.pinn || null,
         details: data.details || null,
         timestamp: new Date().toLocaleTimeString()
       };
     } else {
-      const errJson = await response.json().catch(() => ({ detail: 'Error en backend cuántico' }));
+      const errJson = await response.json().catch(() => ({ detail: 'Quantum backend error' }));
       return {
         success: false,
-        error: errJson.detail || `Error HTTP ${response.status}`,
+        error: errJson.detail || `HTTP Error ${response.status}`,
         timestamp: new Date().toLocaleTimeString()
       };
     }
@@ -80,14 +81,39 @@ export async function runQuantumSolver(code, options = {}, onProgress = () => {}
     if (err.name === 'AbortError') {
       return {
         success: false,
-        error: 'La simulación cuántica superó el tiempo límite de espera (timeout).',
+        error: 'The quantum simulation exceeded the timeout limit.',
         timestamp: new Date().toLocaleTimeString()
       };
     }
     return {
       success: false,
-      error: `No se pudo conectar con el backend FastAPI (${API_BASE}): ${err.message}`,
+      error: `Could not connect to the FastAPI backend (${API_BASE}): ${err.message}`,
       timestamp: new Date().toLocaleTimeString()
     };
+  }
+}
+
+/**
+ * Ultra-fast inference (in milliseconds) of PINN angles and hyperparameters.
+ */
+export async function getPinnHyperparameters(code) {
+  try {
+    const response = await fetch(`${API_BASE}/pinn/predict`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code })
+    });
+    if (response.ok) {
+      const data = await response.json();
+      return {
+        success: true,
+        pinn: data.pinn,
+        features: data.features
+      };
+    }
+    const err = await response.json().catch(() => ({ detail: 'PINN error' }));
+    return { success: false, error: err.detail || 'Inference failed' };
+  } catch (err) {
+    return { success: false, error: err.message };
   }
 }

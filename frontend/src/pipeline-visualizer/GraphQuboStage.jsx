@@ -30,7 +30,7 @@ export default function GraphQuboStage({ data, isPlaying, speed = 1.0, onComplet
     container.innerHTML = '';
     container.appendChild(renderer.domElement);
 
-    // Iluminación
+    // Lighting
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
     scene.add(ambientLight);
     const pointLight = new THREE.PointLight(0x00f2fe, 3, 20);
@@ -40,10 +40,10 @@ export default function GraphQuboStage({ data, isPlaying, speed = 1.0, onComplet
     const graphGroup = new THREE.Group();
     scene.add(graphGroup);
 
-    // 1. Crear Nodos 3D (Qubits)
+    // 1. Create 3D Nodes (Qubits)
     const nodeMeshes = [];
     qubo.nodes.forEach((node) => {
-      // Esfera del nodo
+      // Node sphere
       const geometry = new THREE.SphereGeometry(0.38, 32, 32);
       const material = new THREE.MeshStandardMaterial({
         color: new THREE.Color(node.color),
@@ -56,7 +56,7 @@ export default function GraphQuboStage({ data, isPlaying, speed = 1.0, onComplet
       mesh.position.set(node.x, node.y, node.z);
       graphGroup.add(mesh);
 
-      // Anillo orbital de energía neón
+      // Neon energy orbital ring
       const ringGeo = new THREE.RingGeometry(0.5, 0.56, 32);
       const ringMat = new THREE.MeshBasicMaterial({
         color: new THREE.Color(node.color),
@@ -68,7 +68,7 @@ export default function GraphQuboStage({ data, isPlaying, speed = 1.0, onComplet
       ringMesh.position.copy(mesh.position);
       graphGroup.add(ringMesh);
 
-      // Etiqueta de texto de canvas
+      // Canvas text label
       const canvas = document.createElement('canvas');
       canvas.width = 128;
       canvas.height = 64;
@@ -87,7 +87,7 @@ export default function GraphQuboStage({ data, isPlaying, speed = 1.0, onComplet
       nodeMeshes.push({ mesh, ringMesh, data: node });
     });
 
-    // 2. Crear Enlaces 3D (Acoplamientos Cuadráticos J_ij)
+    // 2. Create 3D Edges (Quadratic Couplings J_ij)
     const edgeMeshes = [];
     (qubo.edges || []).forEach((edge, i) => {
       const uNode = qubo.nodes[edge.u] || qubo.nodes.find(n => n.id === edge.u);
@@ -109,7 +109,7 @@ export default function GraphQuboStage({ data, isPlaying, speed = 1.0, onComplet
       const tubeMesh = new THREE.Mesh(tubeGeo, tubeMat);
       graphGroup.add(tubeMesh);
 
-      // Partícula de pulso cuántico que viaja por el enlace
+      // Quantum pulse particle traveling along the edge
       const pulseGeo = new THREE.SphereGeometry(0.12, 16, 16);
       const pulseMat = new THREE.MeshBasicMaterial({ color: 0xffea00 });
       const pulseMesh = new THREE.Mesh(pulseGeo, pulseMat);
@@ -118,7 +118,7 @@ export default function GraphQuboStage({ data, isPlaying, speed = 1.0, onComplet
       edgeMeshes.push({ tubeMesh, pulseMesh, start, end, progress: Math.random() });
     });
 
-    // Bucle de animación Three.js
+    // Three.js animation loop
     let reqId;
     const clock = new THREE.Clock();
 
@@ -126,13 +126,13 @@ export default function GraphQuboStage({ data, isPlaying, speed = 1.0, onComplet
       reqId = requestAnimationFrame(animate);
       const delta = clock.getDelta();
 
-      // Rotación suave del grafo completo
+      // Smooth rotation of the full graph
       if (isPlaying) {
         graphGroup.rotation.y += 0.3 * delta * speed;
         graphGroup.rotation.x = Math.sin(clock.getElapsedTime() * 0.5) * 0.1;
       }
 
-      // Animación de partículas a lo largo de los enlaces
+      // Particle animation along edges
       edgeMeshes.forEach((em) => {
         if (isPlaying) {
           em.progress = (em.progress + delta * 0.8 * speed) % 1.0;
@@ -140,7 +140,7 @@ export default function GraphQuboStage({ data, isPlaying, speed = 1.0, onComplet
         em.pulseMesh.position.lerpVectors(em.start, em.end, em.progress);
       });
 
-      // Giro de los anillos orbitales
+      // Orbital ring spin
       nodeMeshes.forEach((nm, idx) => {
         nm.ringMesh.rotation.z += (idx % 2 === 0 ? 1 : -1) * delta * 1.5;
       });
@@ -170,7 +170,7 @@ export default function GraphQuboStage({ data, isPlaying, speed = 1.0, onComplet
     };
   }, [isPlaying, speed, qubo]);
 
-  // Animación de la matriz QUBO usando anime.js
+  // QUBO matrix animation using anime.js
   useEffect(() => {
     if (matrixRef.current) {
       animate(matrixRef.current.querySelectorAll('.matrix-cell'), {
@@ -184,55 +184,55 @@ export default function GraphQuboStage({ data, isPlaying, speed = 1.0, onComplet
 
   return (
     <div className="w-full h-full flex flex-col lg:flex-row gap-4 p-4 text-white overflow-hidden select-none">
-      {/* Columna Izquierda: Visualizador 3D del Grafo Cuántico de Qubits */}
+      {/* Left Column: 3D Quantum Qubit Graph Visualizer */}
       <div className="flex-1 flex flex-col bg-[#070b16] rounded-2xl border border-cyan-500/30 shadow-[0_0_20px_rgba(0,242,254,0.12)] p-4 relative overflow-hidden">
         <div className="flex items-center justify-between pb-2 border-b border-cyan-500/20">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#38bdf8]" />
             <span className="font-mono text-xs font-bold text-cyan-300 tracking-wider uppercase">
-              2. Topología de Acoplamientos Cuánticos (V={qubo.nodes.length}, E={qubo.edges.length})
+              2. Quantum Coupling Topology (V={qubo.nodes.length}, E={qubo.edges.length})
             </span>
           </div>
           <span className="text-[10px] font-mono text-slate-400 bg-black/40 px-2 py-0.5 rounded border border-white/10">
-            Nodos = Qubits | Enlaces = J_ij
+            Nodes = Qubits | Edges = J_ij
           </span>
         </div>
 
-        {/* Canvas de Three.js */}
+        {/* Three.js Canvas */}
         <div ref={mountRef} className="flex-1 w-full relative min-h-[260px] cursor-grab" />
 
         <div className="flex items-center justify-between text-[11px] font-mono bg-black/40 p-2 rounded-xl border border-white/5 mt-1">
           <span className="text-slate-400">
-            Acoplamientos Antiferromagnéticos (J &gt; 0) favorecen estados de espín opuestos
+            Antiferromagnetic couplings (J &gt; 0) favor opposite spin states
           </span>
-          <span className="text-cyan-400 font-bold">λ_penalización = {qubo.penaltyLambda}</span>
+          <span className="text-cyan-400 font-bold">λ_penalty = {qubo.penaltyLambda}</span>
         </div>
       </div>
 
-      {/* Columna Derecha: Formulación Matemática del Hamiltoniano e Hiper-matriz QUBO */}
+      {/* Right Column: Hamiltonian Mathematical Formulation & QUBO Hyper-matrix */}
       <div className="w-full lg:w-[420px] flex flex-col gap-3">
-        {/* Ecuación del Hamiltoniano de Ising */}
+        {/* Ising Hamiltonian Equation */}
         <div className="bg-[#070b16] rounded-2xl border border-cyan-500/30 p-3.5 shadow-lg">
           <h4 className="font-mono text-xs font-bold text-cyan-300 mb-2 flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_6px_#00f2fe]" />
-            Hamiltoniano de Costo Cuántico H_C (Ising)
+            Quantum Cost Hamiltonian H_C (Ising)
           </h4>
           <div className="bg-black/60 p-2.5 rounded-xl border border-cyan-500/20 font-mono text-xs text-cyan-200 text-center leading-relaxed shadow-inner">
             <div className="text-[13px] font-bold text-white mb-1">
               H_C = ∑ hᵢ Zᵢ + ∑ Jᵢⱼ Zᵢ Zⱼ + C
             </div>
             <div className="text-[10px] text-slate-400">
-              Operadores Pauli-Z con autoestados computational basis {'{|0⟩, |1⟩}'}
+              Pauli-Z operators with computational basis eigenstates {'{|0⟩, |1⟩}'}
             </div>
           </div>
         </div>
 
-        {/* Matriz QUBO Q (4x4) */}
+        {/* QUBO Matrix Q (4x4) */}
         <div ref={matrixRef} className="bg-[#070b16] rounded-2xl border border-emerald-500/30 p-3.5 shadow-lg flex-1 flex flex-col">
           <div className="flex items-center justify-between mb-2">
             <h4 className="font-mono text-xs font-bold text-emerald-300 flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#10b981]" />
-              Matriz QUBO Q (Diagonal = hᵢ, Fuera = Jᵢⱼ)
+              QUBO Matrix Q (Diagonal = hᵢ, Off-diag = Jᵢⱼ)
             </h4>
             <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/30">
               min xᵀ Q x
@@ -261,8 +261,8 @@ export default function GraphQuboStage({ data, isPlaying, speed = 1.0, onComplet
                       }`}
                       title={
                         isDiag
-                          ? `Término lineal h_${rIdx} = ${val}`
-                          : `Acoplamiento cuadrático J_${rIdx}${cIdx} = ${val}`
+                          ? `Linear term h_${rIdx} = ${val}`
+                          : `Quadratic coupling J_${rIdx}${cIdx} = ${val}`
                       }
                     >
                       <div className="text-[9px] text-slate-500 font-normal">
@@ -280,10 +280,10 @@ export default function GraphQuboStage({ data, isPlaying, speed = 1.0, onComplet
 
           <div className="text-[10px] font-mono text-slate-400 mt-2 flex items-center justify-between">
             <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded bg-purple-500 inline-block" /> Diagonal: Campos hᵢ
+              <span className="w-2 h-2 rounded bg-purple-500 inline-block" /> Diagonal: Fields hᵢ
             </span>
             <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded bg-cyan-500 inline-block" /> Fuera: Enlaces Jᵢⱼ
+              <span className="w-2 h-2 rounded bg-cyan-500 inline-block" /> Off-diag: Couplings Jᵢⱼ
             </span>
           </div>
         </div>

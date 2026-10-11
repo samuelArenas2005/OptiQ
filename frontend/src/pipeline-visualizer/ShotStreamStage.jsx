@@ -29,7 +29,7 @@ export default function ShotStreamStage({ data, isPlaying, speed = 1.0, onComple
     const container = mountRef.current;
     if (!container) return;
 
-    // Instanciar el motor 3D de Three.js con BarManager y mock3 (1024 shots) una sola vez
+    // Instantiate Three.js 3D engine with BarManager and mock3 (1024 shots) once
     const app = new BarVisualizationApp(container, shotsData);
     appRef.current = app;
 
@@ -44,7 +44,7 @@ export default function ShotStreamStage({ data, isPlaying, speed = 1.0, onComple
         const isLastShot = event.shotIndex >= event.totalShots - 1;
         const winner = event.winner;
 
-        // Actualizar estado de React solo si el shot cambia o al llegar al último shot
+        // Update React state only when shot changes or on the last shot
         if (event.shotIndex !== lastReportedShot || isLastShot) {
           lastReportedShot = event.shotIndex;
           setShotState({
@@ -79,14 +79,14 @@ export default function ShotStreamStage({ data, isPlaying, speed = 1.0, onComple
     }));
   }, [data?.shots?.totalShots, shotsData]);
 
-  // Sincronizar play/pause con los controles generales
+  // Sync play/pause with general controls
   useEffect(() => {
     if (appRef.current && appRef.current.animationController) {
       appRef.current.animationController.isPlaying = isPlaying;
     }
   }, [isPlaying]);
 
-  // Sincronizar velocidad externa o local
+  // Sync external or local speed
   useEffect(() => {
     if (appRef.current && appRef.current.animationController) {
       appRef.current.animationController.setSpeed(localSpeed);
@@ -112,14 +112,14 @@ export default function ShotStreamStage({ data, isPlaying, speed = 1.0, onComple
 
   return (
     <div className="w-full h-full flex flex-col lg:flex-row gap-4 p-4 text-white overflow-hidden select-none">
-      {/* Columna Izquierda: Animación 3D del Diagrama de Barras (Three.js BarManager) */}
+      {/* Left Column: 3D Bar Chart Animation (Three.js BarManager) */}
       <div className="flex-1 flex flex-col bg-[#060913] rounded-2xl border border-cyan-500/30 shadow-[0_0_30px_rgba(0,242,254,0.15)] relative overflow-hidden">
-        {/* Encabezado Superpuesto del HUD */}
+        {/* HUD Overlay Header */}
         <div className="absolute top-3 left-3 right-3 z-20 flex items-center justify-between pointer-events-none">
           <div className="pointer-events-auto flex items-center gap-2 bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-cyan-500/30">
             <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#38bdf8]" />
             <span className="font-mono text-xs font-bold text-cyan-300">
-              6. Simulación 3D de Barras Cuánticas ({shotState.totalShots} Shots)
+              6. 3D Quantum Bar Simulation ({shotState.totalShots} Shots)
             </span>
           </div>
 
@@ -129,31 +129,31 @@ export default function ShotStreamStage({ data, isPlaying, speed = 1.0, onComple
               {shotState.currentShot} / {shotState.totalShots}
             </span>
             <span className="text-emerald-400 font-bold bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/40">
-              Medido: |{shotState.currentShotState}⟩
+              Measured: |{shotState.currentShotState}⟩
             </span>
           </div>
         </div>
 
-        {/* Banner Flotante de Ganador cuando finaliza */}
+        {/* Floating Winner Banner when finished */}
         {shotState.isWinner && shotState.winnerState && (
           <div className="absolute top-14 left-1/2 -translate-x-1/2 z-20 pointer-events-auto bg-slate-900/95 backdrop-blur-md border-2 border-amber-400 px-4 py-2 rounded-2xl shadow-[0_0_30px_rgba(255,234,0,0.8)] animate-bounce flex items-center gap-2">
             <span className="text-2xl">👑</span>
             <div className="font-mono text-xs font-bold text-amber-300">
-              ESTADO GANADOR: <span className="text-white text-sm">|{shotState.winnerState}⟩</span> ({shotState.winnerCount} disparos)
+              WINNING STATE: <span className="text-white text-sm">|{shotState.winnerState}⟩</span> ({shotState.winnerCount} shots)
             </div>
           </div>
         )}
 
-        {/* Contenedor del Canvas de Three.js (BarManager) */}
+        {/* Three.js Canvas Container (BarManager) */}
         <div
           ref={mountRef}
           className="w-full h-full relative cursor-grab active:cursor-grabbing"
         />
 
-        {/* Pie de página con ayuda de navegación 3D y botón de reinicio */}
+        {/* Footer with 3D navigation help and restart button */}
         <div className="absolute bottom-3 left-3 right-3 z-20 flex items-center justify-between pointer-events-none text-[10px] font-mono">
           <div className="pointer-events-auto bg-black/70 backdrop-blur-md px-3 py-1 rounded-lg border border-white/10 text-slate-400">
-            🖱️ Arrastrar: Rotar cámara 3D • Rueda: Zoom • Las barras acumulan los conteos en tiempo real
+            🖱️ Drag: Rotate 3D camera • Scroll: Zoom • Bars accumulate counts in real time
           </div>
 
           <div className="pointer-events-auto flex items-center gap-2">
@@ -167,7 +167,7 @@ export default function ShotStreamStage({ data, isPlaying, speed = 1.0, onComple
                       ? 'bg-cyan-500/30 text-cyan-300 font-bold border border-cyan-400/40'
                       : 'text-slate-400 hover:text-white'
                   }`}
-                  title={`Velocidad ${s}x`}
+                  title={`Speed ${s}x`}
                 >
                   {s}x
                 </button>
@@ -177,17 +177,17 @@ export default function ShotStreamStage({ data, isPlaying, speed = 1.0, onComple
             <button
               onClick={handleRestart3D}
               className="px-2.5 py-1 rounded-lg bg-slate-900/90 hover:bg-cyan-500/20 border border-white/10 text-cyan-300 hover:text-white transition-all cursor-pointer flex items-center gap-1"
-              title="Reiniciar disparos 3D al Shot 1"
+              title="Restart 3D shots from Shot 1"
             >
-              <span>🔄</span> Reiniciar 3D
+              <span>🔄</span> Restart 3D
             </button>
           </div>
         </div>
       </div>
 
-      {/* Columna Derecha: Tarjeta de Solución Óptima Decodificada */}
+      {/* Right Column: Decoded Optimal Solution Card */}
       <div className="w-full lg:w-[380px] flex flex-col gap-3">
-        {/* Banner de Victoria Óptima */}
+        {/* Optimal Victory Banner */}
         <div
           className={`bg-[#070b16] rounded-2xl border p-4 shadow-xl transition-all duration-500 flex flex-col justify-between flex-1 ${
             shotState.isWinner
@@ -199,7 +199,7 @@ export default function ShotStreamStage({ data, isPlaying, speed = 1.0, onComple
             <div className="flex items-center justify-between mb-3">
               <span className="text-2xl">👑</span>
               <span className="font-mono text-xs font-bold text-amber-300 bg-amber-400/10 border border-amber-400/40 px-2.5 py-1 rounded-full shadow-[0_0_10px_rgba(255,234,0,0.3)]">
-                SOLUCIÓN QAOA DEL SISTEMA
+                QAOA SYSTEM SOLUTION
               </span>
             </div>
 
@@ -208,14 +208,14 @@ export default function ShotStreamStage({ data, isPlaying, speed = 1.0, onComple
                 |{optimalBitstring}⟩
               </div>
               <div className="text-xs font-mono text-amber-400 mt-1">
-                Eigenestado de Mínima Energía: ⟨H_C⟩ = {typeof energyMin === 'number' ? energyMin.toFixed(4) : energyMin} eV
+                Minimum Energy Eigenstate: ⟨H_C⟩ = {typeof energyMin === 'number' ? energyMin.toFixed(4) : energyMin} eV
               </div>
             </div>
 
-            {/* Asignación de Variables Binarias Físicas */}
+            {/* Physical Binary Variable Assignment */}
             <div className="bg-black/60 rounded-xl p-3 border border-white/10 font-mono text-xs space-y-2 mt-4">
               <div className="text-[11px] text-slate-400 border-b border-white/10 pb-1 font-bold">
-                Asignación Binaria Decodificada:
+                Decoded Binary Assignment:
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs max-h-[140px] overflow-y-auto pr-1">
                 {Object.entries(optimalVariables).map(([varName, val], idx) => (
@@ -227,23 +227,23 @@ export default function ShotStreamStage({ data, isPlaying, speed = 1.0, onComple
               </div>
             </div>
 
-            {/* Valor Objetivo & Factibilidad */}
+            {/* Objective Value & Feasibility */}
             <div className="mt-3 space-y-2 font-mono text-xs">
               <div className="flex justify-between p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300">
-                <span>Valor Objetivo Óptimo:</span>
+                <span>Optimal Objective Value:</span>
                 <span className="font-bold text-white text-sm">f(x*) = {optimalValue}</span>
               </div>
               <div className="flex justify-between p-2.5 rounded-xl bg-cyan-950/40 border border-cyan-500/30 text-cyan-300">
-                <span>Restricciones BIP:</span>
+                <span>BIP Constraints:</span>
                 <span className={`font-bold ${isFeasible ? 'text-emerald-400' : 'text-amber-400'}`}>
-                  {isFeasible ? '100% Factible (Válido)' : 'No Factible'}
+                  {isFeasible ? '100% Feasible (Valid)' : 'Infeasible'}
                 </span>
               </div>
             </div>
           </div>
 
           <div className="mt-4 pt-3 border-t border-white/10 text-center font-mono text-[10px] text-slate-500">
-            Algoritmo Cuántico Variacional QAOA Finalizado con Éxito
+            Variational Quantum Algorithm QAOA Completed Successfully
           </div>
         </div>
       </div>

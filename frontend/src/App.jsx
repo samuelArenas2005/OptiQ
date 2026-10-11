@@ -31,19 +31,20 @@ export default function App() {
   const [hasRun, setHasRun] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(1);
-  const [loadingMessage, setLoadingMessage] = useState('Iniciando compilación cuántica...');
+  const [loadingMessage, setLoadingMessage] = useState('Starting quantum compilation...');
   const [result, setResult] = useState(null);
 
   // Active right panel tab to trigger view on run
   const [activeRightTab, setActiveRightTab] = useState('params'); // 'params', 'solution', 'console', '3d'
   const [isPipelineModalOpen, setIsPipelineModalOpen] = useState(false);
+  const [pipelineInitialStage, setPipelineInitialStage] = useState(null);
 
   // QAOA Hyperparameters with manual seed angles and Qiskit/Qollab backend support
   const [hyperparams, setHyperparams] = useState({
     pSteps: 3,
     shots: 8192,
     optimizer: 'COBYLA',
-    angleInit: 'Automática', // 'Automática', 'Heurística', 'Manual'
+    angleInit: 'Automatic', // 'Automatic', 'Heuristic', 'Manual'
     gamma0: 0.39,
     beta0: 0.78,
     backend: 'aer_simulator', // 'aer_simulator', 'ionq_simulator', 'ionq_qpu'
@@ -56,7 +57,7 @@ export default function App() {
     const newId = `tab-${Date.now()}`;
     const newTab = {
       id: newId,
-      name: `archivo_${tabs.length + 1}.mzn`,
+      name: `file_${tabs.length + 1}.mzn`,
       content: ''
     };
     setTabs((prev) => [...prev, newTab]);
@@ -65,7 +66,7 @@ export default function App() {
 
   const handleAddExampleTab = (example) => {
     if (tabs.length >= 5) {
-      // Si ya hay 5 pestañas, reemplazar la activa con el ejemplo
+      // If there are already 5 tabs, replace the active one with the example
       setTabs((prev) =>
         prev.map((t) =>
           t.id === activeTabId
@@ -125,17 +126,18 @@ export default function App() {
   };
 
   // Quantum / Backend Execution Handler
-  const handleRunExecution = async (targetView = 'solution') => {
+  const handleRunExecution = async (targetView = 'solution', targetStage = null) => {
     const activeTab = tabs.find((t) => t.id === activeTabId);
     const codeToRun = activeTab ? activeTab.content : '';
 
-    if (targetView === '3d') {
+    if (targetView === '3d' || targetStage) {
+      setPipelineInitialStage(targetStage || null);
       setIsPipelineModalOpen(true);
     }
 
     setIsLoading(true);
     setLoadingStep(1);
-    setLoadingMessage('Enviando modelo MiniZinc al backend FastAPI...');
+    setLoadingMessage('Sending MiniZinc model to FastAPI backend...');
 
     try {
       const backendResponse = await runQuantumSolver(
@@ -155,7 +157,7 @@ export default function App() {
     } catch (err) {
       setResult({
         success: false,
-        error: err.message || 'Error inesperado durante la ejecución'
+        error: err.message || 'Unexpected error during execution'
       });
       setHasRun(true);
       setActiveRightTab('console');
@@ -224,17 +226,22 @@ export default function App() {
         </div>
       </footer>
 
-      {/* Visualizador de Pipeline Cuántico End-to-End */}
+      {/* End-to-End Quantum Pipeline Visualizer */}
       <PipelineModal
         isOpen={isPipelineModalOpen}
-        onClose={() => setIsPipelineModalOpen(false)}
+        onClose={() => {
+          setIsPipelineModalOpen(false);
+          setPipelineInitialStage(null);
+        }}
         initialCode={tabs.find((t) => t.id === activeTabId)?.content || DEFAULT_CODE}
         result={result}
         isLoading={isLoading}
         loadingStep={loadingStep}
         loadingMessage={loadingMessage}
         hyperparams={hyperparams}
+        initialStageId={pipelineInitialStage}
       />
     </div>
   );
 }
+

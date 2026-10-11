@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { config } from '../config/config.js';
+import { data as mockDataFromEntradas } from '../src/data/datasets.js';
 import { SceneManager } from './sceneManager.js';
 import { BarManager } from './barManager.js';
 import { AnimationController } from './animationController.js';

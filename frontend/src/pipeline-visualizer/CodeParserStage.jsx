@@ -51,24 +51,24 @@ export default function CodeParserStage({ data, isPlaying, speed = 1.0, onComple
 
   return (
     <div className="w-full h-full flex flex-col lg:flex-row gap-4 p-4 text-white overflow-hidden select-none">
-      {/* Columna Izquierda: Escaneo Láser del Código MiniZinc */}
+      {/* Left Column: Laser Scan of MiniZinc Code */}
       <div className="flex-1 flex flex-col bg-[#070b16] rounded-2xl border border-cyan-500/30 shadow-[0_0_20px_rgba(0,242,254,0.12)] p-4 relative overflow-hidden">
-        {/* Cabecera de consola */}
+        {/* Console Header */}
         <div className="flex items-center justify-between pb-3 mb-2 border-b border-cyan-500/20">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#38bdf8]" />
             <span className="font-mono text-xs font-bold text-cyan-300 tracking-wider uppercase">
-              1. Extracción y Parseo Sintáctico (AST) MiniZinc
+              1. Syntactic Extraction & Parsing (AST) MiniZinc
             </span>
           </div>
           <span className="font-mono text-[11px] text-slate-400 bg-black/40 px-2 py-0.5 rounded border border-white/10">
-            Línea {Math.min(activeLine + 1, lines.length)} de {lines.length}
+            Line {Math.min(activeLine + 1, lines.length)} of {lines.length}
           </span>
         </div>
 
-        {/* Contenedor del código con rayo láser */}
+        {/* Code container with laser beam */}
         <div ref={containerRef} className="relative flex-1 font-mono text-xs overflow-hidden py-1">
-          {/* Rayo Láser Neón de escaneo */}
+          {/* Neon laser scanning beam */}
           <div
             ref={laserRef}
             className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_12px_#00f2fe] pointer-events-none z-20"
@@ -115,7 +115,7 @@ export default function CodeParserStage({ data, isPlaying, speed = 1.0, onComple
                   )}
                   {line.type === 'constraint' && (
                     <span className="text-[9px] bg-amber-950 text-amber-300 px-1.5 py-0.2 rounded border border-amber-500/40">
-                      Restricción {line.id}
+                      Constraint {line.id}
                     </span>
                   )}
                 </div>
@@ -125,16 +125,16 @@ export default function CodeParserStage({ data, isPlaying, speed = 1.0, onComple
         </div>
       </div>
 
-      {/* Columna Derecha: Estructuras AST Extraídas Dinámicamente */}
+      {/* Right Column: Dynamically Extracted AST Structures */}
       <div className="w-full lg:w-[380px] flex flex-col gap-3">
-        {/* Panel de Variables Asignadas a Qubits */}
+        {/* Qubit-Assigned Variables Panel */}
         <div className="bg-[#070b16] rounded-2xl border border-emerald-500/30 p-3.5 shadow-lg flex-1 flex flex-col">
           <div className="flex items-center justify-between mb-2">
             <h4 className="font-mono text-xs font-bold text-emerald-300 flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#10b981]" />
-              Variables Binarias Detectadas ({data.code.variables.length})
+              Detected Binary Variables ({data.code.variables.length})
             </h4>
-            <span className="text-[10px] font-mono text-slate-400">Dominio: {'{0, 1}'}</span>
+            <span className="text-[10px] font-mono text-slate-400">Domain: {'{0, 1}'}</span>
           </div>
 
           <div className="grid grid-cols-2 gap-2 mt-1">
@@ -156,7 +156,7 @@ export default function CodeParserStage({ data, isPlaying, speed = 1.0, onComple
                     </span>
                   </div>
                   <div className="text-[10px] text-slate-400 mt-1">
-                    Peso en Costo: <span className="text-white font-semibold">+{v.costWeight}</span>
+                    Cost Weight: <span className="text-white font-semibold">+{v.costWeight}</span>
                   </div>
                 </div>
               );
@@ -164,19 +164,19 @@ export default function CodeParserStage({ data, isPlaying, speed = 1.0, onComple
           </div>
         </div>
 
-        {/* Panel de Restricciones Matemáticas Detectadas */}
+        {/* Detected Mathematical Constraints Panel */}
         <div className="bg-[#070b16] rounded-2xl border border-amber-500/30 p-3.5 shadow-lg flex-1 flex flex-col">
           <h4 className="font-mono text-xs font-bold text-amber-300 flex items-center gap-1.5 mb-2">
             <span className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_6px_#f59e0b]" />
-            Restricciones Descompuestas
+            Decomposed Constraints
           </h4>
 
           <div className="space-y-2 mt-1 max-h-[160px] overflow-y-auto pr-1">
             {((data.code.constraints && data.code.constraints.length > 0)
               ? data.code.constraints
               : [
-                  { id: 'C1', name: 'Mochila / Capacidad', text: '2·x₁ + 3·x₂ + 4·x₃ + 2·x₄ ≤ 6' },
-                  { id: 'C2', name: 'Exclusión Mutua', text: 'x₁ + x₃ ≤ 1 (Acoplamiento de Conflicto)' }
+                  { id: 'C1', name: 'Knapsack / Capacity', text: '2·x₁ + 3·x₂ + 4·x₃ + 2·x₄ ≤ 6' },
+                  { id: 'C2', name: 'Mutual Exclusion', text: 'x₁ + x₃ ≤ 1 (Conflict Coupling)' }
                 ]
             ).map((c, idx) => {
               const cId = c.id || `C${idx + 1}`;
@@ -198,16 +198,16 @@ export default function CodeParserStage({ data, isPlaying, speed = 1.0, onComple
                   }`}
                 >
                   <div className="font-semibold text-amber-300 text-[11px] mb-0.5">
-                    {cId}: {c.name || 'Restricción Lineal'}
+                    {cId}: {c.name || 'Linear Constraint'}
                   </div>
-                  <div>{descText || c.rawConstraint || `Restricción ${cId}`}</div>
+                  <div>{descText || c.rawConstraint || `Constraint ${cId}`}</div>
                 </div>
               );
             })}
           </div>
         </div>
 
-        {/* Panel de Función Objetivo */}
+        {/* Objective Function Panel */}
         <div
           className={`bg-[#070b16] rounded-2xl border p-3 shadow-lg transition-all duration-300 ${
             parsedTokens.some((t) => t.type === 'objective')
@@ -217,7 +217,7 @@ export default function CodeParserStage({ data, isPlaying, speed = 1.0, onComple
         >
           <div className="font-mono text-xs font-bold text-purple-300 flex items-center gap-1.5 mb-1">
             <span className="w-2 h-2 rounded-full bg-purple-400 shadow-[0_0_6px_#c084fc]" />
-            Objetivo: {data.code.objective?.sense === 'minimize' ? 'Minimize' : 'Maximize'} ∑ cᵢ xᵢ
+            Objective: {data.code.objective?.sense === 'minimize' ? 'Minimize' : 'Maximize'} ∑ cᵢ xᵢ
           </div>
           <div className="font-mono text-xs text-slate-200">
             {data.code.objective?.rawText

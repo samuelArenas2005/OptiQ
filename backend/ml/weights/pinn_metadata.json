@@ -1,0 +1,57 @@
+{
+  "continuous_features": [
+    "num_qubits_n",
+    "num_couplings_m",
+    "graph_density",
+    "spectral_gap_lambda2",
+    "spectral_radius_lambda_max",
+    "global_frustration_index",
+    "h_mean",
+    "h_std",
+    "J_mean",
+    "J_std",
+    "optimal_penalty_lambda"
+  ],
+  "categorical_features": [
+    "problem_type_FrustratedIsing",
+    "problem_type_Knapsack",
+    "problem_type_MaxCut_BA",
+    "problem_type_MaxCut_ER",
+    "problem_type_MaxCut_Reg",
+    "problem_type_VertexCover"
+  ],
+  "scaler_mean": [
+    6.577125,
+    11.079,
+    0.5863696171129122,
+    222.2677419063095,
+    839.5548689406812,
+    0.010955599988112226,
+    -245.86225609802776,
+    92.09342386225612,
+    83.79673675656396,
+    48.40712951318824,
+    4.452
+  ],
+  "scaler_scale": [
+    1.7401298038867823,
+    7.163868298622002,
+    0.2385007637074527,
+    605.9028885484846,
+    2014.9294641277925,
+    0.03429410806405778,
+    625.0050030515467,
+    237.86863872875563,
+    197.87836042238737,
+    114.8283683584544,
+    6.41238613933967
+  ],
+  "target_angles": [
+    "gamma_p1_0",
+    "beta_p1_0",
+    "gamma_p2_0",
+    "gamma_p2_1",
+    "beta_p2_0",
+    "beta_p2_1"
+  ]
+}

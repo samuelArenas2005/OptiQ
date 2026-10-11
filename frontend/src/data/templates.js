@@ -4,9 +4,9 @@
 
 export const TEMPLATES = {
   knapsack: {
-    name: 'Mochila (Knapsack)',
+    name: 'Knapsack Problem',
     filename: 'knapsack.mzn',
-    description: '10 items, capacidad 26, formulación QUBO/Ising',
+    description: '10 items, capacity 26, QUBO/Ising formulation',
     code: `% QAOA Knapsack Optimization (10 Qubits)
 include "quantum_primitives.mzn";
 
@@ -15,23 +15,23 @@ int: capacity = 26;
 array[1..n] of int: weights = [4, 2, 5, 4, 5, 1, 3, 5, 2, 6];
 array[1..n] of int: values  = [10, 7, 12, 8, 14, 3, 9, 11, 6, 15];
 
-var qreg[n]: x; % Variables de decisión binarias
+var qreg[n]: x; % Binary decision variables
 
-% Restricción de capacidad proyectada en Hamiltoniano
+% Capacity constraint projected into Hamiltonian
 constraint sum(i in 1..n)(weights[i] * x[i]) <= capacity;
 
-% Función objetivo: Maximizar valor acumulado
+% Objective function: Maximize accumulated value
 solve maximize sum(i in 1..n)(values[i] * x[i]);
 
-% Compilación de circuito cuántico
+% Quantum circuit compilation
 quantum_ansatz: QAOA(cost_hamiltonian, mixer=RX, depth=3);
 `
   },
   maxcut: {
-    name: 'Max-Cut (Grafo)',
+    name: 'Max-Cut (Graph)',
     filename: 'maxcut.mzn',
-    description: 'Partición de corte máximo en grafo de 8 nodos',
-    code: `% QAOA Max-Cut en grafo de 8 nodos
+    description: 'Maximum cut partition on 8-node graph',
+    code: `% QAOA Max-Cut on 8-node graph
 include "quantum_primitives.mzn";
 
 int: n = 8;
@@ -40,23 +40,23 @@ set of tuple(int, int): EDGES = {
   (1,2), (1,3), (2,4), (3,4), (3,5), (4,6), (5,7), (6,8), (7,8)
 };
 
-var qreg[n]: s; % Spin s[i] in {-1, +1} mapeado a sigma_z
+var qreg[n]: s; % Spin s[i] in {-1, +1} mapped to sigma_z
 
-% Maximizar aristas que cruzan el corte: sum (1 - s[u]*s[v]) / 2
+% Maximize edges crossing the cut: sum (1 - s[u]*s[v]) / 2
 solve maximize sum((u,v) in EDGES)((1 - s[u] * s[v]) / 2);
 
 quantum_ansatz: QAOA(cost_hamiltonian, mixer=RX, depth=3);
 `
   },
   portfolio: {
-    name: 'Optimización de Cartera',
+    name: 'Portfolio Optimization',
     filename: 'portfolio.mzn',
-    description: 'Selección de activos Markowitz con riesgo QUBO',
-    code: `% Optimización de Cartera Cuántica Markowitz
+    description: 'Markowitz asset selection with QUBO risk formulation',
+    code: `% Markowitz Quantum Portfolio Optimization
 include "quantum_primitives.mzn";
 
 int: n = 6;
-int: budget = 3; % Seleccionar exactamente 3 activos
+int: budget = 3; % Select exactly 3 assets
 array[1..n] of float: returns = [0.12, 0.18, 0.09, 0.15, 0.22, 0.11];
 float: risk_factor = 0.5;
 
@@ -70,10 +70,10 @@ quantum_ansatz: QAOA(cost_hamiltonian, mixer=RX, depth=2);
 `
   },
   qubo_direct: {
-    name: 'QUBO Simétrico',
+    name: 'Symmetric QUBO',
     filename: 'qubo_ising.mzn',
-    description: 'Matriz cuadrática Q_ij directa para recocido o QAOA',
-    code: `% Formulación QUBO directa (5 qubits)
+    description: 'Direct quadratic matrix Q_ij for annealing or QAOA',
+    code: `% Direct QUBO Formulation (5 qubits)
 include "quantum_primitives.mzn";
 
 int: n = 5;
@@ -94,20 +94,20 @@ quantum_ansatz: QAOA(cost_hamiltonian, mixer=RX, depth=3);
 };
 
 export const AUTOCOMPLETE_ITEMS = [
-  { label: 'constraint', type: 'keyword', insert: 'constraint ', desc: 'Define una restricción lógica o aritmética' },
-  { label: 'constraint sum(...) <= capacity;', type: 'snippet', insert: 'constraint sum(i in 1..n)(${1:weights}[i] * ${2:x}[i]) <= ${3:capacity};', desc: 'Restricción de suma lineal' },
-  { label: 'solve maximize', type: 'keyword', insert: 'solve maximize ', desc: 'Maximizar función objetivo' },
-  { label: 'solve minimize', type: 'keyword', insert: 'solve minimize ', desc: 'Minimizar función objetivo' },
-  { label: 'solve satisfy;', type: 'keyword', insert: 'solve satisfy;\n', desc: 'Problema de satisfacción de restricciones (CSP)' },
-  { label: 'var qreg[n]: x;', type: 'snippet', insert: 'var qreg[${1:n}]: ${2:x};', desc: 'Registro cuántico de qubits en superposición' },
-  { label: 'array[1..n] of var 0..1: x;', type: 'snippet', insert: 'array[1..${1:n}] of var 0..1: ${2:x};', desc: 'Vector de variables binarias' },
-  { label: 'quantum_ansatz: QAOA(...)', type: 'snippet', insert: 'quantum_ansatz: QAOA(cost_hamiltonian, mixer=RX, depth=${1:3});', desc: 'Ansatz QAOA con mezclador RX' },
-  { label: 'include "quantum_primitives.mzn";', type: 'snippet', insert: 'include "quantum_primitives.mzn";\n', desc: 'Importar primitivas cuánticas' },
-  { label: 'int', type: 'type', insert: 'int: ', desc: 'Tipo entero' },
-  { label: 'float', type: 'type', insert: 'float: ', desc: 'Tipo punto flotante' },
-  { label: 'bool', type: 'type', insert: 'bool: ', desc: 'Tipo booleano' },
-  { label: 'array', type: 'type', insert: 'array[${1:1..n}] of ${2:int}: ', desc: 'Declaración de array' },
-  { label: 'sum', type: 'function', insert: 'sum(${1:i in 1..n})(${2:x[i]})', desc: 'Sumatoria sobre colección' },
-  { label: 'forall', type: 'function', insert: 'forall(${1:i in 1..n})(${2:expr})', desc: 'Cuantificador universal' },
-  { label: 'in', type: 'keyword', insert: 'in ', desc: 'Pertenencia a conjunto' }
+  { label: 'constraint', type: 'keyword', insert: 'constraint ', desc: 'Define a logical or arithmetic constraint' },
+  { label: 'constraint sum(...) <= capacity;', type: 'snippet', insert: 'constraint sum(i in 1..n)(${1:weights}[i] * ${2:x}[i]) <= ${3:capacity};', desc: 'Linear sum constraint' },
+  { label: 'solve maximize', type: 'keyword', insert: 'solve maximize ', desc: 'Maximize objective function' },
+  { label: 'solve minimize', type: 'keyword', insert: 'solve minimize ', desc: 'Minimize objective function' },
+  { label: 'solve satisfy;', type: 'keyword', insert: 'solve satisfy;\n', desc: 'Constraint satisfaction problem (CSP)' },
+  { label: 'var qreg[n]: x;', type: 'snippet', insert: 'var qreg[${1:n}]: ${2:x};', desc: 'Quantum register in superposition' },
+  { label: 'array[1..n] of var 0..1: x;', type: 'snippet', insert: 'array[1..${1:n}] of var 0..1: ${2:x};', desc: 'Binary variables vector' },
+  { label: 'quantum_ansatz: QAOA(...)', type: 'snippet', insert: 'quantum_ansatz: QAOA(cost_hamiltonian, mixer=RX, depth=${1:3});', desc: 'QAOA ansatz with RX mixer' },
+  { label: 'include "quantum_primitives.mzn";', type: 'snippet', insert: 'include "quantum_primitives.mzn";\n', desc: 'Import quantum primitives' },
+  { label: 'int', type: 'type', insert: 'int: ', desc: 'Integer type' },
+  { label: 'float', type: 'type', insert: 'float: ', desc: 'Floating-point type' },
+  { label: 'bool', type: 'type', insert: 'bool: ', desc: 'Boolean type' },
+  { label: 'array', type: 'type', insert: 'array[${1:1..n}] of ${2:int}: ', desc: 'Array declaration' },
+  { label: 'sum', type: 'function', insert: 'sum(${1:i in 1..n})(${2:x[i]})', desc: 'Summation over collection' },
+  { label: 'forall', type: 'function', insert: 'forall(${1:i in 1..n})(${2:expr})', desc: 'Universal quantifier' },
+  { label: 'in', type: 'keyword', insert: 'in ', desc: 'Set membership' }
 ];

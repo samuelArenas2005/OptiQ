@@ -26,8 +26,8 @@ export default function Header() {
         <div className="flex items-center gap-1 text-on-surface-variant">
           <button
             className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container-low hover:text-on-surface transition-colors cursor-pointer"
-            title="Ajustes de entorno"
-            onClick={() => alert(`Configuración del servidor:\nBackend API conectado en: ${API_BASE}`)}
+            title="Environment settings"
+            onClick={() => alert(`Server configuration:\nBackend API connected at: ${API_BASE}`)}
           >
             <span className="material-symbols-outlined text-[18px]">settings</span>
           </button>
