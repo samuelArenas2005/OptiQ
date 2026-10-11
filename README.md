@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.png" alt="OptiQ logo" width="300" />
+  <img src="docs/assets/banner.jpeg" alt="OptiQ logo" width="300" />
 </p>
 
 # OptiQ - Declarative Quantum Optimization IDE
