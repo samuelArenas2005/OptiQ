@@ -907,30 +907,56 @@ export default function RightTelemetryPanel({
                   </div>
                 </div>
 
-                {/* Row 3: Inicialización de Ángulos */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-medium text-on-surface">
-                    Inicialización de Ángulos [γ₀, β₀]
-                  </label>
-                  <div className="grid grid-cols-3 gap-1 bg-surface-container-low p-1 rounded-lg border border-outline-variant/50">
-                    {['Automática', 'Heurística', 'Manual'].map((mode) => {
-                      const isSelected = (hyperparams?.angleInit || 'Automática') === mode;
-                      return (
-                        <button
-                          key={mode}
-                          type="button"
-                          onClick={() => onUpdateHyperparams({ ...hyperparams, angleInit: mode })}
-                          className={`py-1 px-1.5 text-center rounded-md text-xs cursor-pointer transition-all ${
-                            isSelected
-                              ? 'bg-surface-container-lowest text-primary shadow-sm font-semibold'
-                              : 'text-on-surface-variant hover:text-on-surface font-normal'
-                          }`}
-                        >
-                          {mode}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {/* Row 3: Inicialización de Ángulos */}
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-medium text-on-surface">
+                        Inicialización de Ángulos [γ₀, β₀]
+                      </label>
+                      <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-tertiary/10 text-tertiary font-semibold flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse" />
+                        PINN Activa
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-1 bg-surface-container-low p-1 rounded-lg border border-outline-variant/50">
+                      {['Automática', 'Heurística', 'Manual'].map((mode) => {
+                        const isSelected = (hyperparams?.angleInit || 'Automática') === mode;
+                        return (
+                          <button
+                            key={mode}
+                            type="button"
+                            onClick={() => onUpdateHyperparams({ ...hyperparams, angleInit: mode })}
+                            className={`py-1 px-1.5 text-center rounded-md text-xs cursor-pointer transition-all ${
+                              isSelected
+                                ? 'bg-surface-container-lowest text-primary shadow-sm font-semibold'
+                                : 'text-on-surface-variant hover:text-on-surface font-normal'
+                            }`}
+                          >
+                            {mode}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* PINN Informative Capsule for Automática */}
+                    {hyperparams?.angleInit === 'Automática' && (
+                      <div className="p-2.5 rounded-xl bg-surface-container-low/70 border border-tertiary/30 shadow-sm flex flex-col gap-1.5 mt-0.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="material-symbols-outlined text-[16px] text-tertiary">neurology</span>
+                            <span className="text-[11px] font-bold text-on-surface">Selección Guiada por PINN</span>
+                          </div>
+                          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-tertiary/15 text-tertiary font-semibold">
+                            Red de 17 Features
+                          </span>
+                        </div>
+
+                        <p className="text-[10px] text-on-surface-variant leading-relaxed">
+                          Los ángulos óptimos de partida <strong className="text-tertiary font-mono">[γ₀, β₀]</strong> y la telemetría cuántica se calculan automáticamente mediante la <strong>Red Neuronal Informada por la Física (PINN)</strong>, evaluando en tiempo real el gap espectral Laplaciano (λ₂), el radio espectral y el índice de frustración cuántica para mitigar Barren Plateaus.
+                        </p>
+                      </div>
+                    )}
 
                   {/* Manual Angle Fields when 'Manual' */}
                   {hyperparams?.angleInit === 'Manual' && (

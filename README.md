@@ -249,7 +249,7 @@ docker compose down
 
 - [Ckancord33](https://github.com/Ckancord33)
 - [samuelArenas2005](https://github.com/samuelArenas2005)
-- [theClowner](https://github.com/theClowner)
+- [Sebastian6174](https://github.com/Sebastian6174)
 - [Danicol12](https://github.com/Danicol12)
 
 ---

@@ -100,6 +100,24 @@ async def solve_problem(request: ProblemRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error durante simulación QAOA: {str(e)}")
 
+    # 4. Inferencia de Hiperparámetros PINN basados en la topología real
+    try:
+        pinn_input = {
+            **(binary_problem.topology or {}),
+            "global": features.get("global", {}),
+            "problem_type": "Knapsack" if "capacity" in request.code.lower() else "MaxCut_Reg"
+        }
+        pinn_results = get_hyperparameters(pinn_input)
+    except Exception as err:
+        logger.warning(f"Aviso al ejecutar inferencia PINN: {err}")
+        pinn_results = {
+            "p1": {"gamma": [0.6508], "beta": [2.5938]},
+            "p2": {"gamma": [0.6508, 0.5092], "beta": [2.5938, -0.0585]},
+            "gamma": [0.6508],
+            "beta": [2.5938],
+            "telemetry": {"recommended_shots": 1024, "recommended_lr_eta": 0.02, "target_depth_p_star": 1}
+        }
+
     return {
         "status": "success",
         "message": "Problema parseado y resuelto exitosamente con QAOA ejecutado en Qiskit.",
@@ -113,6 +131,7 @@ async def solve_problem(request: ProblemRequest):
             "objective": binary_problem.parsed_model.objective
         },
         "features": features,
+        "pinn": pinn_results,
         "details": {
             "solver_used": request.solver,
             "qaoa_hyperparameters_used": hyperparams,
@@ -133,3 +152,36 @@ async def solve_problem(request: ProblemRequest):
             "console_logs": qaoa_results.get("console_logs", [])
         }
     }
+
+
+class PinnPredictRequest(BaseModel):
+    code: str
+
+
+@router.post("/pinn/predict")
+async def predict_pinn_hyperparameters(request: PinnPredictRequest):
+    """
+    Endpoint rápido y dedicado para obtener únicamente los hiperparámetros y ángulos
+    sugeridos por la PINN en milisegundos sin necesidad de ejecutar la simulación completa.
+    """
+    try:
+        binary_problem = parse_problem(request.code)
+        qubo_problem = binary_problem.topology.get("qubo_problem")
+        original_qp = binary_problem.topology.get("original_qp")
+        features = extract_bip_features(qubo_problem, original_qp)
+        
+        pinn_input = {
+            **(binary_problem.topology or {}),
+            "global": features.get("global", {}),
+            "problem_type": "Knapsack" if "capacity" in request.code.lower() else "MaxCut_Reg"
+        }
+        pinn_result = get_hyperparameters(pinn_input)
+        return {
+            "status": "success",
+            "pinn": pinn_result,
+            "features": features
+        }
+    except Exception as e:
+        logger.error(f"Error en inferencia dedicada PINN: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+

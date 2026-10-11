@@ -1,12 +1,17 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { BarVisualizationApp, defaultData } from '../../logica/main.js';
-import { mock1, mock2, mock3, MOCK_ACTIVO } from '../../../entradas/data.js';
+<<<<<<< HEAD
+=======
+import { mock1, mock2, mock3, MOCK_ACTIVO } from '../data/datasets.js';
+>>>>>>> ddec6e4c730aebfc1be83296fa089d02e7a8fa5a
 
 export default function BarChartVisualizer3D({ customData = null }) {
   const mountRef = useRef(null);
   const appRef = useRef(null);
 
-  const [selectedMockName, setSelectedMockName] = useState(MOCK_ACTIVO || 'mock3');
+<<<<<<< HEAD
+  const activeDataset = customData || defaultData;
+  const [selectedMockName, setSelectedMockName] = useState('default');
   const [shotState, setShotState] = useState({
     currentShot: 1,
     totalShots: activeDataset?.shots?.length || 1024,
@@ -20,6 +25,9 @@ export default function BarChartVisualizer3D({ customData = null }) {
   const [isPlaying, setIsPlaying] = useState(true);
   const [speed, setSpeed] = useState(1.0);
 
+=======
+  const [selectedMockName, setSelectedMockName] = useState(MOCK_ACTIVO || 'mock3');
+
   // Helper para obtener dataset según clave
   const getDataset = (key) => {
     if (key === 'mock1') return mock1;
@@ -30,6 +38,17 @@ export default function BarChartVisualizer3D({ customData = null }) {
   // Determinar qué dataset usar (configurable desde entradas/data.js con MOCK_ACTIVO)
   const activeDataset = customData || getDataset(selectedMockName);
 
+  const [shotState, setShotState] = useState({
+    currentShot: 1,
+    totalShots: activeDataset?.shots?.length || 1024,
+    currentShotState: '',
+    progress: 0,
+    isWinner: false,
+    winnerState: null,
+    winnerCount: 0,
+  });
+
+>>>>>>> ddec6e4c730aebfc1be83296fa089d02e7a8fa5a
   useEffect(() => {
     const container = mountRef.current;
     if (!container) return;

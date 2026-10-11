@@ -37,6 +37,7 @@ export default function App() {
   // Active right panel tab to trigger view on run
   const [activeRightTab, setActiveRightTab] = useState('params'); // 'params', 'solution', 'console', '3d'
   const [isPipelineModalOpen, setIsPipelineModalOpen] = useState(false);
+  const [pipelineInitialStage, setPipelineInitialStage] = useState(null);
 
   // QAOA Hyperparameters with manual seed angles and Qiskit/Qollab backend support
   const [hyperparams, setHyperparams] = useState({
@@ -125,11 +126,12 @@ export default function App() {
   };
 
   // Quantum / Backend Execution Handler
-  const handleRunExecution = async (targetView = 'solution') => {
+  const handleRunExecution = async (targetView = 'solution', targetStage = null) => {
     const activeTab = tabs.find((t) => t.id === activeTabId);
     const codeToRun = activeTab ? activeTab.content : '';
 
-    if (targetView === '3d') {
+    if (targetView === '3d' || targetStage) {
+      setPipelineInitialStage(targetStage || null);
       setIsPipelineModalOpen(true);
     }
 
@@ -213,14 +215,19 @@ export default function App() {
       {/* Visualizador de Pipeline Cuántico End-to-End */}
       <PipelineModal
         isOpen={isPipelineModalOpen}
-        onClose={() => setIsPipelineModalOpen(false)}
+        onClose={() => {
+          setIsPipelineModalOpen(false);
+          setPipelineInitialStage(null);
+        }}
         initialCode={tabs.find((t) => t.id === activeTabId)?.content || DEFAULT_CODE}
         result={result}
         isLoading={isLoading}
         loadingStep={loadingStep}
         loadingMessage={loadingMessage}
         hyperparams={hyperparams}
+        initialStageId={pipelineInitialStage}
       />
     </div>
   );
 }
+
