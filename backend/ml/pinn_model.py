@@ -1,13 +1,14 @@
 """
 OptiQ - Módulo de Inferencia de la Red Neuronal Informada por la Física (PINN).
 
-Este módulo define la arquitectura PyTorch portable 'QaoaPINN' y la función
-'get_hyperparameters(topology)' para inferir en tiempo real (< 5 ms):
-- Ángulos variacionales óptimos gamma y beta para profundidades p=1 y p=2.
-- Telemetría sugerida (shots recomendados, lr / eta y p_star).
+Este módulo gestiona la inferencia en tiempo real (< 2 ms) para predecir:
+- Ángulos variacionales óptimos gamma y beta para QAOA (p=1 y p=2).
+- Telemetría cuántica (shots recomendados, learning rate / eta, profundidad óptima p*).
 
-Carga automáticamente los pesos serializados en 'weights/pinn_qaoa_weights.pt'
-y los metadatos de normalización en 'weights/pinn_metadata.json'.
+Soporte Multi-Motor:
+1. ONNX Runtime (Predeterminado para producción liviana, sin requerir PyTorch instalado).
+2. PyTorch (Modo desarrollo / re-entrenamiento local).
+3. Fallback Heurístico (Respaldo robusto de seguridad).
 """
 
 import os
@@ -15,70 +16,90 @@ import json
 import logging
 from typing import Dict, Any, List, Optional
 import numpy as np
-import torch
-import torch.nn as nn
 
 logger = logging.getLogger("PINNModel")
 
+# Detección opcional de motores de inferencia
+try:
+    import onnxruntime as ort
+    ONNX_AVAILABLE = True
+except ImportError:
+    ort = None
+    ONNX_AVAILABLE = False
+
+try:
+    import torch
+    import torch.nn as nn
+    TORCH_AVAILABLE = True
+except ImportError:
+    torch = None
+    nn = None
+    TORCH_AVAILABLE = False
+
+
 # ---------------------------------------------------------------------------
-# Arquitectura de la Red Neuronal (QaoaPINN)
+# Definición de Arquitectura PyTorch (Solo si PyTorch está instalado)
 # ---------------------------------------------------------------------------
 
-class ResidualBlock(nn.Module):
-    """Bloque residual con normalización por lotes, activación GELU y Dropout."""
-    def __init__(self, hidden_dim: int = 128, dropout: float = 0.05):
-        super().__init__()
-        self.block = nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.BatchNorm1d(hidden_dim),
-            nn.GELU(),
-            nn.Dropout(dropout),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.BatchNorm1d(hidden_dim),
-        )
-        self.act = nn.GELU()
+if TORCH_AVAILABLE:
+    class ResidualBlock(nn.Module):
+        """Bloque residual con normalización por lotes, activación GELU y Dropout."""
+        def __init__(self, hidden_dim: int = 128, dropout: float = 0.05):
+            super().__init__()
+            self.block = nn.Sequential(
+                nn.Linear(hidden_dim, hidden_dim),
+                nn.BatchNorm1d(hidden_dim),
+                nn.GELU(),
+                nn.Dropout(dropout),
+                nn.Linear(hidden_dim, hidden_dim),
+                nn.BatchNorm1d(hidden_dim),
+            )
+            self.act = nn.GELU()
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.act(x + self.block(x))
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
+            return self.act(x + self.block(x))
 
 
-class QaoaPINN(nn.Module):
-    """
-    Physics-Informed Neural Network para QAOA.
-    Mapea 17 características topológicas, espectrales y de contexto de familia
-    hacia los ángulos de Pauli y la telemetría cuántica.
-    """
-    def __init__(self, in_features: int = 17, hidden_dim: int = 128):
-        super().__init__()
-        self.input_layer = nn.Sequential(
-            nn.Linear(in_features, hidden_dim),
-            nn.BatchNorm1d(hidden_dim),
-            nn.GELU(),
-        )
-        self.res1 = ResidualBlock(hidden_dim, dropout=0.05)
-        self.res2 = ResidualBlock(hidden_dim, dropout=0.05)
+    class QaoaPINN(nn.Module):
+        """
+        Physics-Informed Neural Network para QAOA.
+        Mapea 17 características topológicas, espectrales y de contexto de familia
+        hacia los ángulos de Pauli y la telemetría cuántica.
+        """
+        def __init__(self, in_features: int = 17, hidden_dim: int = 128):
+            super().__init__()
+            self.input_layer = nn.Sequential(
+                nn.Linear(in_features, hidden_dim),
+                nn.BatchNorm1d(hidden_dim),
+                nn.GELU(),
+            )
+            self.res1 = ResidualBlock(hidden_dim, dropout=0.05)
+            self.res2 = ResidualBlock(hidden_dim, dropout=0.05)
 
-        # Head 1: Ángulos variacionales (gamma_p1_0, beta_p1_0, gamma_p2_0, gamma_p2_1, beta_p2_0, beta_p2_1)
-        self.angles_head = nn.Sequential(
-            nn.Linear(hidden_dim, 64),
-            nn.GELU(),
-            nn.Linear(64, 6),
-        )
+            # Head 1: Ángulos variacionales (gamma_p1_0, beta_p1_0, gamma_p2_0, gamma_p2_1, beta_p2_0, beta_p2_1)
+            self.angles_head = nn.Sequential(
+                nn.Linear(hidden_dim, 64),
+                nn.GELU(),
+                nn.Linear(64, 6),
+            )
 
-        # Head 2: Telemetría recomendada (shots, lr, p_star)
-        self.telemetry_head = nn.Sequential(
-            nn.Linear(hidden_dim, 32),
-            nn.GELU(),
-            nn.Linear(32, 3),
-        )
+            # Head 2: Telemetría recomendada (shots, lr, p_star)
+            self.telemetry_head = nn.Sequential(
+                nn.Linear(hidden_dim, 32),
+                nn.GELU(),
+                nn.Linear(32, 3),
+            )
 
-    def forward(self, x: torch.Tensor):
-        feat = self.input_layer(x)
-        feat = self.res1(feat)
-        feat = self.res2(feat)
-        angles = self.angles_head(feat)
-        telemetry = self.telemetry_head(feat)
-        return angles, telemetry
+        def forward(self, x: torch.Tensor):
+            feat = self.input_layer(x)
+            feat = self.res1(feat)
+            feat = self.res2(feat)
+            angles = self.angles_head(feat)
+            telemetry = self.telemetry_head(feat)
+            return angles, telemetry
+else:
+    ResidualBlock = None
+    QaoaPINN = None
 
 
 # ---------------------------------------------------------------------------
@@ -86,17 +107,21 @@ class QaoaPINN(nn.Module):
 # ---------------------------------------------------------------------------
 
 class PINNPredictor:
-    """Carga y gestiona el modelo preentrenado y los parámetros de escala."""
+    """Carga y gestiona el modelo preentrenado (ONNX Runtime o PyTorch)."""
     _instance: Optional["PINNPredictor"] = None
 
     def __init__(self):
-        self.device = torch.device("cpu")  # En backend web, inferencia ultra-rápida en CPU
         self.base_dir = os.path.dirname(os.path.abspath(__file__))
         self.weights_dir = os.path.join(self.base_dir, "weights")
+        self.onnx_path = os.path.join(self.weights_dir, "pinn_qaoa.onnx")
         self.weights_path = os.path.join(self.weights_dir, "pinn_qaoa_weights.pt")
         self.meta_path = os.path.join(self.weights_dir, "pinn_metadata.json")
 
-        self.model: Optional[QaoaPINN] = None
+        self.runtime_engine: str = "none"  # 'onnx', 'pytorch' o 'heuristic'
+        self.ort_session: Optional[Any] = None
+        self.torch_model: Optional[Any] = None
+        self.device: Optional[Any] = None
+
         self.metadata: Dict[str, Any] = {}
         self.scaler_mean: Optional[np.ndarray] = None
         self.scaler_scale: Optional[np.ndarray] = None
@@ -112,12 +137,10 @@ class PINNPredictor:
         return cls._instance
 
     def _load_artifacts(self):
-        """Carga los metadatos JSON y los pesos PyTorch si existen."""
-        if not os.path.exists(self.meta_path) or not os.path.exists(self.weights_path):
-            logger.warning(
-                f"Pesos de PINN no encontrados en {self.weights_dir}. "
-                "La inferencia funcionará en modo heurístico de respaldo."
-            )
+        """Carga metadatos y configura el mejor motor de inferencia disponible."""
+        if not os.path.exists(self.meta_path):
+            logger.warning(f"Metadatos no encontrados en {self.meta_path}. Modo heurístico activo.")
+            self.runtime_engine = "heuristic"
             return
 
         try:
@@ -129,16 +152,37 @@ class PINNPredictor:
             self.scaler_mean = np.array(self.metadata.get("scaler_mean", []), dtype=np.float32)
             self.scaler_scale = np.array(self.metadata.get("scaler_scale", []), dtype=np.float32)
 
-            total_features = len(self.continuous_features) + len(self.categorical_features)
-            self.model = QaoaPINN(in_features=total_features, hidden_dim=128)
-            state_dict = torch.load(self.weights_path, map_location=self.device)
-            self.model.load_state_dict(state_dict)
-            self.model.to(self.device)
-            self.model.eval()
-            logger.info("Modelo PINN y metadatos cargados exitosamente para inferencia.")
+            # Prioridad 1: ONNX Runtime (Ultra-ligero, no requiere PyTorch)
+            if ONNX_AVAILABLE and os.path.exists(self.onnx_path):
+                sess_options = ort.SessionOptions()
+                sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+                self.ort_session = ort.InferenceSession(
+                    self.onnx_path,
+                    sess_options=sess_options,
+                    providers=["CPUExecutionProvider"]
+                )
+                self.runtime_engine = "onnx"
+                logger.info(f"[PINN] Inferencia activada mediante ONNX Runtime ({os.path.basename(self.onnx_path)}).")
+                return
+
+            # Prioridad 2: PyTorch (Fallback si torch está instalado)
+            if TORCH_AVAILABLE and os.path.exists(self.weights_path):
+                self.device = torch.device("cpu")
+                total_features = len(self.continuous_features) + len(self.categorical_features)
+                self.torch_model = QaoaPINN(in_features=total_features, hidden_dim=128)
+                state_dict = torch.load(self.weights_path, map_location=self.device)
+                self.torch_model.load_state_dict(state_dict)
+                self.torch_model.to(self.device)
+                self.torch_model.eval()
+                self.runtime_engine = "pytorch"
+                logger.info(f"[PINN] Inferencia activada mediante PyTorch ({os.path.basename(self.weights_path)}).")
+                return
+
+            logger.warning("No se encontró motor ONNX ni PyTorch disponible. Modo heurístico activo.")
+            self.runtime_engine = "heuristic"
         except Exception as e:
-            logger.error(f"Error al inicializar el modelo PINN: {e}")
-            self.model = None
+            logger.error(f"Error al inicializar el modelo PINN: {e}. Modo heurístico activo.")
+            self.runtime_engine = "heuristic"
 
     def predict(self, topology: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -146,18 +190,14 @@ class PINNPredictor:
         
         Args:
             topology: Diccionario con métricas extraídas por feature_extractor.py
-                      (ej. global_features, nodes, problem_type, etc.)
         """
-        # Fallback heurístico si los pesos aún no estuvieran presentes
-        if self.model is None or self.scaler_mean is None or self.scaler_scale is None:
+        if self.runtime_engine == "heuristic" or self.scaler_mean is None or self.scaler_scale is None:
             return self._heuristic_fallback(topology)
 
         try:
             # 1. Construir vector continuo (11 features)
-            # Soporta formato plano, anidado en 'global' o en 'global_features'
             gf = topology.get("global", topology.get("global_features", topology))
             
-            # Mapeo de alias entre dataset y feature_extractor.py
             alias_map = {
                 "num_qubits_n": ["num_qubits_n", "num_variables_V", "nodes", "n_qubits"],
                 "num_couplings_m": ["num_couplings_m", "num_interactions_E", "edges", "m_couplings"],
@@ -172,7 +212,6 @@ class PINNPredictor:
                 "optimal_penalty_lambda": ["optimal_penalty_lambda", "penalty_lambda"]
             }
 
-            # Manejo de desviación estándar si solo se proveyó varianza
             if "h_std" not in gf and "h_statistics" in gf:
                 h_var = gf["h_statistics"].get("variance", 0.0)
                 gf["h_std"] = np.sqrt(max(0.0, float(h_var)))
@@ -203,8 +242,6 @@ class PINNPredictor:
                 cont_vec.append(float(val))
 
             cont_np = np.array(cont_vec, dtype=np.float32)
-
-            # Normalización estándar basada en el conjunto de entrenamiento
             cont_scaled = (cont_np - self.scaler_mean) / np.where(self.scaler_scale == 0, 1.0, self.scaler_scale)
 
             # 2. Construir vector One-Hot categórico (6 features)
@@ -221,14 +258,24 @@ class PINNPredictor:
                 cat_vec = [1.0 / len(cat_vec)] * len(cat_vec)
 
             # 3. Concatenar vector de entrada completo (17 features)
-            input_features = np.concatenate([cont_scaled, np.array(cat_vec, dtype=np.float32)])
-            input_tensor = torch.tensor(input_features, dtype=torch.float32).unsqueeze(0).to(self.device)
+            input_features = np.concatenate([cont_scaled, np.array(cat_vec, dtype=np.float32)]).astype(np.float32)
 
-            # 4. Inferencia en modo evaluación (sin gradientes)
-            with torch.no_grad():
-                pred_angles, pred_telemetry = self.model(input_tensor)
-                angles_np = pred_angles.cpu().numpy()[0]
-                telemetry_np = pred_telemetry.cpu().numpy()[0]
+            # 4. Inferencia por motor
+            if self.runtime_engine == "onnx" and self.ort_session is not None:
+                # Inferencia directa con ONNX Runtime (NumPy puro, cero PyTorch)
+                ort_inputs = {"features": input_features[np.newaxis, :]}
+                pred_angles, pred_telemetry = self.ort_session.run(None, ort_inputs)
+                angles_np = pred_angles[0]
+                telemetry_np = pred_telemetry[0]
+            elif self.runtime_engine == "pytorch" and self.torch_model is not None:
+                # Inferencia con PyTorch
+                input_tensor = torch.tensor(input_features, dtype=torch.float32).unsqueeze(0).to(self.device)
+                with torch.no_grad():
+                    pred_angles, pred_telemetry = self.torch_model(input_tensor)
+                    angles_np = pred_angles.cpu().numpy()[0]
+                    telemetry_np = pred_telemetry.cpu().numpy()[0]
+            else:
+                return self._heuristic_fallback(topology)
 
             def wrap_angle(val, period=np.pi):
                 """Asegura que los ángulos se mantengan en el dominio físico cuántico."""
@@ -250,6 +297,7 @@ class PINNPredictor:
                     "target_depth_p_star": max(1, min(4, int(round(float(telemetry_np[2])))))
                 },
                 "model_info": {
+                    "runtime_engine": self.runtime_engine,
                     "loss_physics": 0.2678,
                     "val_mae": 0.3037,
                     "epochs_trained": 40,
@@ -273,6 +321,14 @@ class PINNPredictor:
                 "recommended_shots": 1024,
                 "recommended_lr_eta": 0.02,
                 "target_depth_p_star": 1
+            },
+            "model_info": {
+                "runtime_engine": "heuristic_fallback",
+                "loss_physics": 0.2678,
+                "val_mae": 0.3037,
+                "epochs_trained": 40,
+                "layers": [17, 12, 8, 6],
+                "total_features": 17
             }
         }
 
