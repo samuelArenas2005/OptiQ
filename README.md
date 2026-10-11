@@ -103,27 +103,34 @@ flowchart TD
 
 ## Instrucciones de Instalación y Ejecución
 
-### 1. Requisitos Previos
-- Node.js (v18 o superior)
-- Python (v3.10 o superior)
-
-### 2. Configurar e Iniciar el Backend (FastAPI)
+### 1. Ejecución Rápida en Qollab.xyz / Terminal (Standalone Demo)
+Para correr la demostración completa del protocolo cuántico sin necesidad de levantar servidores ni configurar puertos (compatible con la plataforma **Qollab.xyz**):
 
 ```bash
-# Desde la raíz del proyecto
-cd backend
-
-# Instalar dependencias de Python
+# Instalar dependencias
 pip install -r requirements.txt
 
-# Iniciar el servidor FastAPI (servirá en http://127.0.0.1:8000)
-python -m uvicorn main:app --host 127.0.0.1 --port 8000 --reload
+# Ejecutar la demo de la Mochila Binaria (Knapsack)
+python main.py
+
+# O ejecutar otros benchmarks de optimización combinatoria:
+python main.py maxcut       # Corte Máximo en Grafo
+python main.py setcover     # Cobertura de Conjuntos (Set Cover)
 ```
 
-### 3. Configurar e Iniciar el Frontend (React + Vite)
+---
 
+### 2. Ejecución Completa con Interfaz Gráfica (Web IDE)
+
+#### Paso A: Iniciar el Backend (FastAPI)
+```bash
+# Iniciar el servidor FastAPI (servirá en http://127.0.0.1:8000)
+python main.py --server
+# (O alternativamente: cd backend && python -m uvicorn main:app --reload)
+```
+
+#### Paso B: Iniciar el Frontend (React + Vite)
 En una nueva terminal:
-
 ```bash
 # Navegar a la carpeta frontend
 cd frontend
@@ -135,7 +142,7 @@ npm install
 npm run dev
 ```
 
-Abre tu navegador en `http://localhost:3000` para comenzar a utilizar OptiQ.
+Abre tu navegador en `http://localhost:3000` para utilizar la interfaz visual interactiva de OptiQ.
 
 ---
 
