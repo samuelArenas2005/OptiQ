@@ -65,6 +65,7 @@ export async function runQuantumSolver(code, options = {}, onProgress = () => {}
         message: data.message || 'Problema parseado y resuelto con éxito.',
         parsedSummary: data.parsed_summary || null,
         features: data.features || null,
+        pinn: data.pinn || null,
         details: data.details || null,
         timestamp: new Date().toLocaleTimeString()
       };
@@ -89,5 +90,30 @@ export async function runQuantumSolver(code, options = {}, onProgress = () => {}
       error: `No se pudo conectar con el backend FastAPI (${API_BASE}): ${err.message}`,
       timestamp: new Date().toLocaleTimeString()
     };
+  }
+}
+
+/**
+ * Inferencia ultrarrápida (en milisegundos) de ángulos e hiperparámetros PINN.
+ */
+export async function getPinnHyperparameters(code) {
+  try {
+    const response = await fetch(`${API_BASE}/pinn/predict`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code })
+    });
+    if (response.ok) {
+      const data = await response.json();
+      return {
+        success: true,
+        pinn: data.pinn,
+        features: data.features
+      };
+    }
+    const err = await response.json().catch(() => ({ detail: 'Error en PINN' }));
+    return { success: false, error: err.detail || 'Fallo de inferencia' };
+  } catch (err) {
+    return { success: false, error: err.message };
   }
 }

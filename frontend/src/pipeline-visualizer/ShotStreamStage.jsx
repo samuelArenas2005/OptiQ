@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { BarVisualizationApp } from '../../logica/main.js';
-import { mock3 } from '../../../entradas/data.js';
+import { mock3 } from '../data/datasets.js';
 
 export default function ShotStreamStage({ data, isPlaying, speed = 1.0, onComplete }) {
   const mountRef = useRef(null);

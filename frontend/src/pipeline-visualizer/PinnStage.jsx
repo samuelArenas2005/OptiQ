@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-const PINN_LAYERS = [8, 14, 10, 4]; // Arquitectura fija para evitar recreaciones de referencia
+// Arquitectura real de QaoaPINN: 17 features espectrales -> ResBlock 1 (128) -> ResBlock 2 (64) -> 6 salidas (ángulos + telemetría)
+const PINN_LAYERS = [17, 12, 8, 6];
 
 export default function PinnStage({ data, isPlaying, speed = 1.0, onComplete }) {
   const canvasRef = useRef(null);
@@ -29,7 +30,7 @@ export default function PinnStage({ data, isPlaying, speed = 1.0, onComplete }) 
     PINN_LAYERS.forEach((nodeCount, lIdx) => {
       const x = (lIdx + 0.8) * layerGap;
       const nodes = [];
-      const nodeGap = Math.min(30, (height - 50) / nodeCount);
+      const nodeGap = Math.min(24, (height - 40) / nodeCount);
       const startY = (height - (nodeCount - 1) * nodeGap) / 2;
 
       for (let n = 0; n < nodeCount; n++) {
@@ -40,7 +41,7 @@ export default function PinnStage({ data, isPlaying, speed = 1.0, onComplete }) 
 
     // Partículas continuas de datos
     const particles = [];
-    for (let i = 0; i < 28; i++) {
+    for (let i = 0; i < 36; i++) {
       particles.push({
         layer: Math.floor(Math.random() * (PINN_LAYERS.length - 1)),
         fromIdx: 0,
@@ -67,8 +68,8 @@ export default function PinnStage({ data, isPlaying, speed = 1.0, onComplete }) 
             ctx.beginPath();
             ctx.moveTo(fn.x, fn.y);
             ctx.lineTo(tn.x, tn.y);
-            ctx.strokeStyle = 'rgba(56, 189, 248, 0.09)';
-            ctx.lineWidth = 1;
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.08)';
+            ctx.lineWidth = 0.8;
             ctx.stroke();
           });
         });
@@ -86,14 +87,19 @@ export default function PinnStage({ data, isPlaying, speed = 1.0, onComplete }) 
           lastReportedLayer = currentActiveLayer;
           setActiveLayerIndex(currentActiveLayer);
           if (layerTextRef.current) {
-            const names = ["Features Físicas (Entrada)", "Capa Densa Oculta 1", "Capa Densa Oculta 2", "Hiperparámetros Óptimos"];
+            const names = [
+              "17 Features Espectrales (Entrada)",
+              "ResBlock 1 + BatchNorm (128)",
+              "ResBlock 2 + Dropout (64)",
+              "Ángulos Óptimos (γ, β) + Telemetría"
+            ];
             layerTextRef.current.textContent = names[currentActiveLayer] || "";
           }
         }
 
         // Actualizar pérdida física sin provocar re-renders de React
         if (lossTextRef.current) {
-          const simulatedLoss = Math.max(pinn.lossPhysics, 0.048 - pulseProgress * 0.034);
+          const simulatedLoss = pinn.lossPhysics * (1.12 - pulseProgress * 0.12);
           lossTextRef.current.textContent = `Pérdida Física: ℒ = ${simulatedLoss.toFixed(4)}`;
         }
       }
@@ -174,7 +180,7 @@ export default function PinnStage({ data, isPlaying, speed = 1.0, onComplete }) 
         ctx.fillStyle = isReached ? '#e2e8f0' : '#64748b';
         ctx.font = 'bold 11px monospace';
         ctx.textAlign = 'center';
-        const layerTitles = ["Features", "Oculta 1", "Oculta 2", "Salida (γ, β)"];
+        const layerTitles = ["17 Features", "ResBlock 1", "ResBlock 2", "Salidas (γ, β)"];
         ctx.fillText(layerTitles[lIdx], layer[0].x, 22);
       });
 

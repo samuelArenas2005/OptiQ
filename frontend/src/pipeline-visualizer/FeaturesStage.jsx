@@ -42,7 +42,7 @@ export default function FeaturesStage({ data, isPlaying, speed = 1.0, onComplete
         </div>
         <div className="flex items-center gap-2 font-mono text-[11px] text-emerald-400 bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-500/30">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-          <span>Vector de 8 Invariantes Topológicos</span>
+          <span>Vector de Entrada Completo (ℝ¹⁷)</span>
         </div>
       </div>
 
@@ -169,7 +169,7 @@ export default function FeaturesStage({ data, isPlaying, speed = 1.0, onComplete
       <div className="bg-[#070b16] rounded-2xl border border-cyan-500/30 p-3.5 shadow-lg flex-1 flex flex-col">
         <h4 className="font-mono text-xs font-bold text-cyan-300 mb-2 flex items-center justify-between">
           <span>Vector de Entrada para la Red Neuronal Informada por Física (PINN):</span>
-          <span className="text-[10px] text-slate-400">X_features ∈ ℝ⁸</span>
+          <span className="text-[10px] text-slate-400">X_features ∈ ℝ¹⁷ (11 Físicas + 6 One-Hot)</span>
         </h4>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 font-mono text-xs">
