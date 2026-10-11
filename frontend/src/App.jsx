@@ -3,6 +3,7 @@ import Header from './components/Header';
 import MiniZincEditor from './components/MiniZincEditor';
 import RightTelemetryPanel from './components/RightTelemetryPanel';
 import { runQuantumSolver } from './services/quantumApi';
+import PipelineModal from './pipeline-visualizer/PipelineModal';
 
 const DEFAULT_CODE = `int: n = 4;
 int: capacity = 7;
@@ -35,6 +36,7 @@ export default function App() {
 
   // Active right panel tab to trigger view on run
   const [activeRightTab, setActiveRightTab] = useState('params'); // 'params', 'solution', 'console', '3d'
+  const [isPipelineModalOpen, setIsPipelineModalOpen] = useState(false);
 
   // QAOA Hyperparameters with manual seed angles support
   const [hyperparams, setHyperparams] = useState({
@@ -125,6 +127,10 @@ export default function App() {
     const activeTab = tabs.find((t) => t.id === activeTabId);
     const codeToRun = activeTab ? activeTab.content : '';
 
+    if (targetView === '3d') {
+      setIsPipelineModalOpen(true);
+    }
+
     setIsLoading(true);
     setLoadingStep(1);
     setLoadingMessage('Enviando modelo MiniZinc al backend FastAPI...');
@@ -198,6 +204,13 @@ export default function App() {
           </div>
         </div>
       </main>
+
+      {/* Visualizador de Pipeline Cuántico End-to-End */}
+      <PipelineModal
+        isOpen={isPipelineModalOpen}
+        onClose={() => setIsPipelineModalOpen(false)}
+        initialCode={tabs.find((t) => t.id === activeTabId)?.content || DEFAULT_CODE}
+      />
     </div>
   );
 }
