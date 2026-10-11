@@ -154,13 +154,50 @@ class PINNPredictor:
 
         try:
             # 1. Construir vector continuo (11 features)
-            # Soporta formato plano o anidado en 'global_features'
-            gf = topology.get("global_features", topology)
+            # Soporta formato plano, anidado en 'global' o en 'global_features'
+            gf = topology.get("global", topology.get("global_features", topology))
             
+            # Mapeo de alias entre dataset y feature_extractor.py
+            alias_map = {
+                "num_qubits_n": ["num_qubits_n", "num_variables_V", "nodes", "n_qubits"],
+                "num_couplings_m": ["num_couplings_m", "num_interactions_E", "edges", "m_couplings"],
+                "graph_density": ["graph_density"],
+                "spectral_gap_lambda2": ["spectral_gap_lambda2", "laplacian_spectral_gap_lambda2", "lambda_2"],
+                "spectral_radius_lambda_max": ["spectral_radius_lambda_max", "laplacian_spectral_radius", "lambda_max"],
+                "global_frustration_index": ["global_frustration_index", "frustration_index"],
+                "h_mean": ["h_mean", "h_statistics.mean"],
+                "h_std": ["h_std", "h_statistics.variance"],
+                "J_mean": ["J_mean", "J_statistics.mean"],
+                "J_std": ["J_std", "J_statistics.variance"],
+                "optimal_penalty_lambda": ["optimal_penalty_lambda", "penalty_lambda"]
+            }
+
+            # Manejo de desviación estándar si solo se proveyó varianza
+            if "h_std" not in gf and "h_statistics" in gf:
+                h_var = gf["h_statistics"].get("variance", 0.0)
+                gf["h_std"] = np.sqrt(max(0.0, float(h_var)))
+            if "J_std" not in gf and "J_statistics" in gf:
+                j_var = gf["J_statistics"].get("variance", 0.0)
+                gf["J_std"] = np.sqrt(max(0.0, float(j_var)))
+
             cont_vec = []
             for feat_name in self.continuous_features:
-                val = gf.get(feat_name, topology.get(feat_name, 0.0))
-                # Limpieza de valores nulos o inf
+                val = None
+                aliases = alias_map.get(feat_name, [feat_name])
+                for alias in aliases:
+                    if "." in alias:
+                        parent, child = alias.split(".", 1)
+                        parent_dict = gf.get(parent, topology.get(parent, {}))
+                        if isinstance(parent_dict, dict) and child in parent_dict:
+                            val = parent_dict[child]
+                            break
+                    elif alias in gf:
+                        val = gf[alias]
+                        break
+                    elif alias in topology:
+                        val = topology[alias]
+                        break
+
                 if val is None or np.isnan(val) or np.isinf(val):
                     val = 0.0
                 cont_vec.append(float(val))
@@ -174,14 +211,12 @@ class PINNPredictor:
             ptype = str(topology.get("problem_type", "MaxCut_Reg")).strip()
             cat_vec = []
             for cat_col in self.categorical_features:
-                # La columna se llama problem_type_<nombre>
                 match_name = cat_col.replace("problem_type_", "")
                 if match_name.lower() in ptype.lower():
                     cat_vec.append(1.0)
                 else:
                     cat_vec.append(0.0)
 
-            # Si ninguna categoría coincidió, asignar peso uniforme a las categorías
             if sum(cat_vec) == 0.0 and len(cat_vec) > 0:
                 cat_vec = [1.0 / len(cat_vec)] * len(cat_vec)
 
@@ -195,22 +230,23 @@ class PINNPredictor:
                 angles_np = pred_angles.cpu().numpy()[0]
                 telemetry_np = pred_telemetry.cpu().numpy()[0]
 
-            # Formatear salidas por nivel de profundidad p
-            # angles: [gamma_p1_0, beta_p1_0, gamma_p2_0, gamma_p2_1, beta_p2_0, beta_p2_1]
-            p1_gamma = [float(angles_np[0])]
-            p1_beta  = [float(angles_np[1])]
-            p2_gamma = [float(angles_np[2]), float(angles_np[3])]
-            p2_beta  = [float(angles_np[4]), float(angles_np[5])]
+            def wrap_angle(val, period=np.pi):
+                """Asegura que los ángulos se mantengan en el dominio físico cuántico."""
+                return float((val + period) % (2.0 * period) - period)
+
+            p1_gamma = [round(wrap_angle(angles_np[0], np.pi), 4)]
+            p1_beta  = [round(wrap_angle(angles_np[1], np.pi / 2.0), 4)]
+            p2_gamma = [round(wrap_angle(angles_np[2], np.pi), 4), round(wrap_angle(angles_np[3], np.pi), 4)]
+            p2_beta  = [round(wrap_angle(angles_np[4], np.pi / 2.0), 4), round(wrap_angle(angles_np[5], np.pi / 2.0), 4)]
 
             return {
                 "p1": {"gamma": p1_gamma, "beta": p1_beta},
                 "p2": {"gamma": p2_gamma, "beta": p2_beta},
-                # Compatibilidad directa con clientes que esperan gamma y beta principales
                 "gamma": p1_gamma,
                 "beta": p1_beta,
                 "telemetry": {
                     "recommended_shots": max(100, int(round(float(telemetry_np[0])))),
-                    "recommended_lr_eta": max(0.001, float(telemetry_np[1])),
+                    "recommended_lr_eta": round(max(0.001, min(0.1, float(telemetry_np[1]))), 4),
                     "target_depth_p_star": max(1, min(4, int(round(float(telemetry_np[2])))))
                 }
             }
