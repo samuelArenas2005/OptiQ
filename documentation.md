@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/samuelArenas2005/OptiQ/main/docs/assets/logo.png" alt="OptiQ banner" width="320" />
+  <img src="./docs/assets/banner.jpeg" alt="OptiQ banner" width="320" />
 </p>
 
 # OptiQ: declarative quantum optimization
