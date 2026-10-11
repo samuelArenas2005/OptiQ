@@ -25,16 +25,17 @@ There are two ways to use it:
 
 1. [What it shows](#what-it-shows)
 2. [Why it matters](#why-it-matters)
-3. [Background: binary programming and MiniZinc](#background-binary-programming-and-minizinc)
-4. [QAOA in a nutshell](#qaoa-in-a-nutshell)
-5. [From a binary program to a QAOA circuit](#from-a-binary-program-to-a-qaoa-circuit)
-6. [Tuning γ and β: classical optimizers and PINNs](#tuning-γ-and-β-classical-optimizers-and-pinns)
-7. [Shots, probabilities and the answer](#shots-probabilities-and-the-answer)
-8. [Run it on Qollab](#run-it-on-qollab)
-9. [How it works](#how-it-works)
-10. [Make it yours](#make-it-yours)
-11. [Credits](#credits)
-12. [Project Structure & In-Depth Guide](#project-structure--in-depth-guide)
+3. [Target Audience: Who is it for?](#target-audience-who-is-it-for)
+4. [Background: binary programming and MiniZinc](#background-binary-programming-and-minizinc)
+5. [QAOA in a nutshell](#qaoa-in-a-nutshell)
+6. [From a binary program to a QAOA circuit](#from-a-binary-program-to-a-qaoa-circuit)
+7. [Tuning γ and β: classical optimizers and PINNs](#tuning-γ-and-β-classical-optimizers-and-pinns)
+8. [Shots, probabilities and the answer](#shots-probabilities-and-the-answer)
+9. [How to run OptiQ](#how-to-run-optiq)
+10. [How it works](#how-it-works)
+11. [Project Structure & In-Depth Guide](#project-structure--in-depth-guide)
+12. [Make it yours](#make-it-yours)
+13. [Credits](#credits)
 
 ---
 
@@ -92,6 +93,15 @@ Combinatorial optimization (routing, scheduling, portfolio selection, network de
 - **Declarative in, quantum out.** You write constraints and an objective. OptiQ handles slack variables, penalties and the Ising mapping.
 - **Insight into the problem.** Spectral and topological features (λ₂, λ_max, frustration, `h_i`, `J_ij`) show how hard the landscape is for QAOA.
 - **A path to smarter QAOA.** The same features feed a dataset of about 10,000 solved instances, built to train a model that predicts good starting angles (see [Tuning γ and β](#tuning-γ-and-β-classical-optimizers-and-pinns)).
+
+### Target Audience: Who is it for?
+
+OptiQ is designed for a wide spectrum of problem-solvers bridging the gap between classical operations research and quantum computing:
+
+1. **Operations Researchers & Optimization Engineers:** Professionals in logistics, supply chain, finance, and industrial planning who are accustomed to high-level algebraic modeling languages (MiniZinc, AMPL, Pyomo). They can define constraints and objectives declaratively without having to derive Ising spin couplings or penalty formulas by hand.
+2. **Quantum Computing Researchers & Students:** Practitioners learning or benchmarking variational algorithms (QAOA) on real hardware (IonQ) or simulators with Qiskit. OptiQ offers an intuitive visual environment, transparent graph analysis (spectral gap $\lambda_2$, frustration), and live measurement histograms.
+3. **Machine Learning & AI Researchers:** Data scientists interested in Physics-Informed Neural Networks (PINNs) and topological feature extraction for optimizing quantum circuits and mitigating *barren plateaus*.
+4. **Software Developers & Prototypers:** Engineers needing a clean, modular REST API (`POST /api/solve`), containerized Docker deployment, or a modern browser-based IDE to prototype quantum solutions rapidly.
 
 ---
 
@@ -275,25 +285,93 @@ A quantum circuit doesn't return one answer. Each run ("shot") collapses to one 
 
 ---
 
-## Run it on Qollab
+## How to run OptiQ
 
-1. Press **Run** in the Qollab toolbar and pick the **Built-in simulator** or the **IonQ simulator**.
-2. `main.py` solves the **4-item Knapsack** and prints 7 steps:
-   1. model
-   2. BIP compilation
-   3. graph features
-   4. initial angles
-   5. QAOA execution
-   6. measured distribution
-   7. exact classical check
-3. To change the problem or the settings, edit the last line of `main.py`:
-   ```python
-   main(benchmark="maxcut", p_steps=2, shots=4096)   # knapsack | knapsack8 | maxcut | setcover
-   ```
-4. When it finishes, Qollab's **Circuit** and **Probabilities** widgets show the QAOA circuit and the measured counts.
+OptiQ supports multiple execution workflows depending on your environment—from zero-install cloud execution on Qollab to a standalone console demo, a full local web IDE, and containerized Docker deployment:
+
+### 1. In Qollab (`Qollab.xyz` runtime)
+Run directly inside the Qollab cloud environment with zero setup:
+1. Press **Run** in the Qollab toolbar and select either the **Built-in simulator** or the **IonQ simulator**.
+2. `main.py` detects Qollab's global `backend` context automatically, runs the complete 7-step pipeline on the default **4-item Knapsack**, and executes in **a single job** (compatible with IonQ cloud requirements).
+3. When execution finishes, Qollab's native **Circuit** and **Probabilities** widgets display the QAOA quantum circuit and the measured bitstring counts.
 
 > [!TIP]
 > The angle optimization runs locally on an exact statevector. Only the final, optimized circuit is sent to the backend, so **each run uses a single job**, which is what IonQ backends on Qollab require.
+
+---
+
+### 2. Standalone Console Demo (Local Terminal CLI)
+To test the complete end-to-end quantum optimization pipeline on an example problem without launching web servers or opening a browser:
+
+```bash
+# 1. Clone the repository and install dependencies
+git clone https://github.com/samuelArenas2005/OptiQ.git
+cd OptiQ
+pip install -r requirements.txt
+
+# 2. Run the default 0/1 Knapsack benchmark (4 items, 7 qubits with slack)
+python main.py
+
+# 3. Or run other preconfigured combinatorial benchmarks:
+python main.py knapsack8    # 8-item Knapsack (12 qubits with slack)
+python main.py maxcut       # Max-Cut on graph
+python main.py setcover     # Exact Set Cover problem
+```
+
+Each benchmark prints 7 detailed steps in the terminal:
+1. **Model:** The high-level MiniZinc specification.
+2. **BIP & QUBO compilation:** Slack qubit allocation and penalty terms.
+3. **Graph features:** Laplacian spectral gap ($\lambda_2$), spectral radius ($\lambda_{\max}$), and frustration index.
+4. **Initial angles:** Heuristic or PINN-predicted $(\gamma_0, \beta_0)$ angles.
+5. **QAOA execution:** Variational circuit evaluation on Qiskit Aer or IonQ.
+6. **Measured distribution:** Top measured bitstrings, marginal probabilities, and feasibility validation.
+7. **Exact classical check:** Exhaustive solver to verify the true ground state and compute the approximation ratio.
+
+---
+
+### 3. Full Local Web IDE (FastAPI Backend + React Frontend)
+To run the complete interactive IDE locally on your machine with the code editor, 3D visualizer, and telemetry panels:
+
+#### Step A: Start the FastAPI Backend
+In your first terminal:
+```bash
+# From the repository root:
+python main.py --server
+# Or launch directly with uvicorn:
+# uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
+```
+The REST API will start at `http://127.0.0.1:8000` (Swagger interactive docs at `http://127.0.0.1:8000/docs`).
+
+#### Step B: Start the React Web IDE
+In a second terminal:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Open your browser at `http://localhost:3000` (or `http://localhost:5173`) to use the full OptiQ IDE: write custom `.mzn` models, adjust QAOA hyperparameters, visualize the 3D qubit coupling graph, and run the quantum solver.
+
+---
+
+### 4. Production Deployment with Docker
+For containerized deployment on any cloud server (Oracle Cloud Infrastructure OCI, AWS EC2, or Linux VPS):
+
+```bash
+# Build and run the backend container in the background
+docker compose up -d --build
+
+# Inspect real-time execution logs
+docker compose logs -f optiq-backend
+
+# Check container status
+docker compose ps
+
+# Stop the container
+docker compose down
+```
+
+> [!NOTE]
+> Ensure port `8000` is open in your cloud security list (Ingress Rules) and OS firewall to allow external traffic to the backend API.
 
 ---
 
