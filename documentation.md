@@ -30,11 +30,12 @@ There are two ways to use it:
 5. [From a binary program to a QAOA circuit](#from-a-binary-program-to-a-qaoa-circuit)
 6. [Tuning γ and β: classical optimizers and PINNs](#tuning-γ-and-β-classical-optimizers-and-pinns)
 7. [Shots, probabilities and the answer](#shots-probabilities-and-the-answer)
-8. [Run it on Qollab](#run-it-on-qollab)
-9. [How it works](#how-it-works)
-10. [Make it yours](#make-it-yours)
-11. [Credits](#credits)
-12. [Project Structure & In-Depth Guide](#project-structure--in-depth-guide)
+8. [Computational limits and scaling](#computational-limits-and-scaling)
+9. [Run it on Qollab](#run-it-on-qollab)
+10. [How it works](#how-it-works)
+11. [Make it yours](#make-it-yours)
+12. [Credits](#credits)
+13. [Project Structure & In-Depth Guide](#project-structure--in-depth-guide)
 
 ---
 
@@ -233,21 +234,35 @@ graph LR
     RB2 --> TH
 ```
 
-#### 1. Input Representation ($\mathbb{R}^{17}$)
-The network receives an invariant vector derived in $\mathcal{O}(|V| + |E|)$ by [`extract_bip_features`](https://github.com/samuelArenas2005/OptiQ/blob/main/backend/quantum/feature_extractor.py):
-1. **11 continuous topological and spectral invariants:** number of qubits ($n$), coupling edges ($m$), graph density ($\rho$), Laplacian spectral gap ($\lambda_2$), spectral radius ($\lambda_{\max}$), signed Laplacian frustration index ($\chi$), linear field statistics ($\mu_h, \sigma_h$), quadratic coupling statistics ($\mu_J, \sigma_J$), and penalty multiplier ($\lambda$).
+#### 1. Input Representation (ℝ¹⁷)
+The network receives an invariant vector derived in O(|V| + |E|) by [`extract_bip_features`](https://github.com/samuelArenas2005/OptiQ/blob/main/backend/quantum/feature_extractor.py):
+1. **11 continuous topological and spectral invariants:** number of qubits (*n*), coupling edges (*m*), graph density (*ρ*), Laplacian spectral gap (*λ₂*), spectral radius (*λ_max*), signed Laplacian frustration index (*χ*), linear field statistics (*μ_h, σ_h*), quadratic coupling statistics (*μ_J, σ_J*), and penalty multiplier (*λ*).
 2. **6 one-hot family indicators:** encodes specific energy landscapes (Knapsack, MaxCut-Regular, MaxCut-Barabási-Albert, MaxCut-Erdős-Rényi, Frustrated Ising, and Vertex Cover).
 
-#### 2. Quantum Physics-Informed Symmetric Loss ($\mathcal{L}_{\text{PINN}}$)
+#### 2. Quantum Physics-Informed Symmetric Loss (L_PINN)
 Standard MSE loss fails for variational quantum angles due to phase wrap-around discontinuities. OptiQ trains the network with a custom periodic quantum metric:
-$$\mathcal{L}_{\text{quantum}}(\hat{\theta}, \theta^*) = \min\Big(|\hat{\theta} - \theta^*|, \; |\hat{\theta} - (\theta^* \pm \pi)|\Big)$$
-Combined with Pauli boundary regularizers on $[-\pi, \pi]$ for $\gamma$ and $[-\frac{\pi}{2}, \frac{\pi}{2}]$ for $\beta$, and adiabatic monotonicity constraints:
-$$\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{quantum}} + \lambda_{\text{phys}}\mathcal{L}_{\text{boundary}} + \lambda_{\text{adiab}}\mathcal{L}_{\text{monotonicity}}$$
+
+> **L_quantum(θ̂, θ\*) = min( |θ̂ − θ\*|, |θ̂ − (θ\* ± π)| )**
+
+Combined with Pauli boundary regularizers on `[−π, π]` for **γ** and `[−π/2, π/2]` for **β**, and adiabatic monotonicity constraints:
+
+> **L_total = L_quantum + λ_phys · L_boundary + λ_adiab · L_monotonicity**
 
 #### 3. Validation and Benchmarks
 - **Dataset:** 10,000 systematically solved BIP instances in [`backend/dataset/qaoa_pignn_dataset.csv`](https://github.com/samuelArenas2005/OptiQ/blob/main/backend/dataset/qaoa_pignn_dataset.csv).
-- **Stratified 5-Fold Cross Validation:** Generalization error verified at **$\text{MAE} = 0.3037 \pm 0.0038\text{ rad}$**.
+- **Stratified 5-Fold Cross Validation:** Generalization error verified at **MAE = 0.3037 ± 0.0038 rad**.
 - **Runtime Performance & Zero-PyTorch Deployment:** The model is exported to ONNX format ([`pinn_qaoa.onnx`](https://github.com/samuelArenas2005/OptiQ/blob/main/backend/ml/weights/pinn_qaoa.onnx), ~339 KB) and executed via **ONNX Runtime** with pure NumPy arrays. This avoids bloated PyTorch installations in containerized production environments (keeping Docker images featherlight) while delivering **sub-millisecond (< 1 ms)** inference latency on CPU.
+
+#### 4. Arbitrary Depth Scaling: Adiabatic Schedule & Mitigating Barren Plateaus
+When QAOA is configured with depths beyond $p=2$ (up to $p=8$ in the IDE), OptiQ dynamically constructs and optimizes the remaining angles:
+
+1. **Output Head Structure:** The 6 output neurons of the angle head represent the fundamental baselines for depth $p=1$ (2 angles: $\gamma_{1,0}, \beta_{1,0}$) and depth $p=2$ (4 angles: $\gamma_{2,0}, \gamma_{2,1}, \beta_{2,0}, \beta_{2,1}$), rather than an arbitrary static depth.
+2. **Quantum Adiabatic Schedule:** For any target depth $p$, the PINN ground angles $(\gamma_0, \beta_0)$ seed a complete vector of $2p$ parameters through an adiabatic evolution schedule ([`qaoa_solver.py`](https://github.com/samuelArenas2005/OptiQ/blob/main/backend/quantum/qaoa_solver.py#L282-L286)):
+   > **γ_k^(init) = γ₀ · (0.4 + 0.6 · (k + 1) / p)**  
+   > **β_k^(init) = β₀ · (1.0 − 0.7 · k / p)**, &nbsp; for *k = 0, …, p − 1*
+   - *Physical foundation:* In Quantum Adiabatic Computing (AQC), adiabatic state preparation requires ramping up the problem Hamiltonian $H_C$ (increasing phase angles $\gamma$) while progressively turning down the mixer Hamiltonian $H_M$ (decreasing mixer angles $\beta$).
+3. **Mitigating Barren Plateaus:** In Variational Quantum Algorithms (VQAs), random angle initialization causes the cost gradient to vanish exponentially with qubit count—the notorious *Barren Plateau* phenomenon (where variance decays as O(2⁻ⁿ)). By anchoring the starting point to the graph's spectral and topological features, OptiQ seeds the parameters directly inside the energy landscape's basin of attraction.
+4. **Classical Outer-Loop Refinement:** Starting from this informed basin, the classical optimizer (COBYLA, Nelder-Mead, or SLSQP) only needs a few iterations (<15 evaluations) to fine-tune all $2p$ variational angles, synthesizing the optimal $p$-layer ansatz circuit in Qiskit.
 
 **In the code:**
 - Inference engine (ONNX Runtime + PyTorch fallback): [`pinn_model.py`](https://github.com/samuelArenas2005/OptiQ/blob/main/backend/ml/pinn_model.py)
@@ -270,9 +285,31 @@ A quantum circuit doesn't return one answer. Each run ("shot") collapses to one 
   2. **Filter feasible quantum samples.** Check each sampled state against the original model constraints to identify which ones are valid.
   3. **Pick the best candidate among feasible states.** From the top sampled feasible configurations, OptiQ selects the one that maximizes (or minimizes) the objective value. This candidate is highlighted with the **Óptimo** badge in the histogram.
   4. **Classical verification only for benchmarking.** In the terminal runner (`main.py`), a classical exhaustive solver is run exclusively to calculate the approximation ratio and evaluate QAOA's performance against ground truth. The Web IDE operates purely on the quantum sampling results.
-- **Configure it well and it lands on the optimum.** With adequate layers ($p$), guided angle initialization, and sufficient shots, the true ground state appears among the top measured states with high probability.
+- **Configure it well and it lands on the optimum.** With adequate layers (p), guided angle initialization, and sufficient shots, the true ground state appears among the top measured states with high probability.
 
 **In the code:** sampling, slack marginalization, feasibility checks and solution selection are in `run_qaoa` ([`qaoa_solver.py`](https://github.com/samuelArenas2005/OptiQ/blob/main/backend/quantum/qaoa_solver.py)). The exact check is `solve_classical_exact` in [`main.py`](https://github.com/samuelArenas2005/OptiQ/blob/main/main.py).
+
+---
+
+## Computational limits and scaling
+
+Because OptiQ compiles declarative models into quantum circuits, the total number of required qubits equals:
+
+> **Total Qubits (n) = Decision Variables (|V|) + Slack Qubits (s)**
+
+Where slack variables are automatically introduced by the QUBO compiler to encode inequality constraints (such as `Σ wᵢxᵢ ≤ C`).
+
+### Classical Statevector Simulation Scaling: O(2ⁿ)
+
+Simulating quantum states classically requires storing and evolving the full statevector of 2ⁿ complex amplitudes. Consequently, classical memory requirements and execution times scale **exponentially with qubit count (O(2ⁿ))**:
+
+| Total Qubits (*n*) | Statevector Dimension | Memory Required | Execution Latency | Recommended Target |
+|---|---|---|---|---|
+| **1 – 16 qubits** | Up to 65,536 amplitudes | < 1 MB | **Real-time (< 2s)** | Web IDE & Qollab Simulator |
+| **17 – 20 qubits** | Up to 1,048,576 amplitudes | ~16 MB | **Fast (2 – 10s)** | Web IDE & Local Aer |
+| **21 – 22 qubits** | Up to 4,194,304 amplitudes | ~64 MB | **Acceptable (10 – 30s)** | Dedicated execution |
+| **23+ qubits** | ≥ 16,777,216 amplitudes | ≥ 256 MB – GBs | **Risk of Timeout / OOM** | Physical QPU (IonQ Hardware) |
+
 
 ---
 
