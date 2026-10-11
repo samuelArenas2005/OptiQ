@@ -52,7 +52,7 @@ export const config = {
 
   // Parámetros de animación y transiciones
   animation: {
-    epochDuration: 0.05,  // Duración en segundos por época (10x más rápido que 0.5s)
+    epochDuration: 0.1,   // Duración en segundos por época (ritmo suave y visible)
     lerpFactor: 0.35,     // Suavizado ágil por cuadro para alta velocidad
     loop: false,          // Detener automáticamente al llegar al último shot
     autoPlay: true,       // Iniciar la animación al cargar

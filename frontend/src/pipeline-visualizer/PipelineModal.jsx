@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { PIPELINE_MOCK_DATA } from './mockData.js';
+import { adaptBackendDataToPipeline } from './dataAdapter.js';
 import CodeParserStage from './CodeParserStage.jsx';
 import GraphQuboStage from './GraphQuboStage.jsx';
 import FeaturesStage from './FeaturesStage.jsx';
@@ -16,11 +17,25 @@ const STAGES = [
   { id: 'shots', name: '6. Shots & Solución', icon: 'emoji_events', component: ShotStreamStage, duration: 0 },
 ];
 
-export default function PipelineModal({ isOpen, onClose, initialCode = null }) {
+export default function PipelineModal({
+  isOpen,
+  onClose,
+  initialCode = null,
+  result = null,
+  isLoading = false,
+  loadingStep = 1,
+  loadingMessage = '',
+  hyperparams = null
+}) {
   const [currentStep, setCurrentStep] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [speed, setSpeed] = useState(1.0);
   const [autoAdvance, setAutoAdvance] = useState(true);
+
+  // Adapta los datos reales de ejecución del backend para todas las pestañas (excepto PINN que queda mock)
+  const pipelineData = useMemo(() => {
+    return adaptBackendDataToPipeline(result, initialCode, hyperparams);
+  }, [result, initialCode, hyperparams]);
 
   // Auto-avance secuencial para etapas 1 a 5.
   // La etapa 6 (shots) NO se corta artificialmente por tiempo; se completa cuando terminan los 1024 disparos.
@@ -77,9 +92,21 @@ export default function PipelineModal({ isOpen, onClose, initialCode = null }) {
                 OptiQ <span className="text-cyan-400">Quantum Pipeline Visualizer</span>
               </h2>
             </div>
-            <span className="hidden sm:inline-block font-mono text-[10px] bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 px-2 py-0.5 rounded-full">
-              End-to-End BIP → PINN → QAOA
-            </span>
+            {isLoading ? (
+              <span className="hidden sm:inline-flex items-center gap-1.5 font-mono text-[10px] bg-cyan-950/80 border border-cyan-400 text-cyan-300 px-2.5 py-0.5 rounded-full animate-pulse">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+                <span>Simulación QAOA en Ejecución...</span>
+              </span>
+            ) : result?.success ? (
+              <span className="hidden sm:inline-flex items-center gap-1.5 font-mono text-[10px] bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 px-2.5 py-0.5 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                <span>Backend Real Conectado ({pipelineData.circuit?.qubitsCount || 4} Qubits | {result.details?.hardware || 'Qiskit Aer'})</span>
+              </span>
+            ) : (
+              <span className="hidden sm:inline-block font-mono text-[10px] bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 px-2 py-0.5 rounded-full">
+                End-to-End BIP → PINN → QAOA
+              </span>
+            )}
           </div>
 
           {/* Stepper de Etapas Cuánticas */}
@@ -133,7 +160,7 @@ export default function PipelineModal({ isOpen, onClose, initialCode = null }) {
         {/* Área Central: Visualizador de la Etapa Activa */}
         <main className="flex-1 min-h-0 w-full overflow-hidden relative">
           <ActiveStageComponent
-            data={PIPELINE_MOCK_DATA}
+            data={pipelineData}
             isPlaying={isPlaying}
             speed={speed}
             onComplete={handleStageComplete}

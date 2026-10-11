@@ -12,14 +12,19 @@ export default function ShotStreamStage({ data, isPlaying, speed = 1.0, onComple
 
   const [shotState, setShotState] = useState({
     currentShot: 1,
-    totalShots: 1024,
-    currentShotState: '1010',
+    totalShots: data?.shots?.totalShots || 1024,
+    currentShotState: data?.shots?.optimalState || '1010',
     isWinner: false,
     winnerState: null,
     winnerCount: 0,
   });
 
-  const shotsData = mock3 || data.shots;
+  const shotsData = data?.shots?.shotsData || mock3;
+  const optimalBitstring = shotState.winnerState || data?.shots?.optimalState || '1010';
+  const optimalValue = data?.shots?.optimalValue !== undefined ? data.shots.optimalValue : 11.0;
+  const energyMin = data?.shots?.energyMin !== undefined ? data.shots.energyMin : -11.0;
+  const optimalVariables = data?.shots?.optimalVariables || { x1: 1, x2: 0, x3: 1, x4: 0 };
+  const isFeasible = data?.shots?.feasible ?? true;
 
   useEffect(() => {
     const container = mountRef.current;
@@ -65,7 +70,15 @@ export default function ShotStreamStage({ data, isPlaying, speed = 1.0, onComple
         appRef.current = null;
       }
     };
-  }, [shotsData]); // Solo se monta al iniciar
+  }, [shotsData]);
+
+  useEffect(() => {
+    const total = data?.shots?.totalShots || shotsData?.shots?.length || 1024;
+    setShotState((prev) => ({
+      ...prev,
+      totalShots: total,
+    }));
+  }, [data?.shots?.totalShots, shotsData]);
 
   // Sincronizar play/pause con los controles generales
   useEffect(() => {
@@ -107,7 +120,7 @@ export default function ShotStreamStage({ data, isPlaying, speed = 1.0, onComple
           <div className="pointer-events-auto flex items-center gap-2 bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-cyan-500/30">
             <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#38bdf8]" />
             <span className="font-mono text-xs font-bold text-cyan-300">
-              6. Simulación 3D de Barras Cuánticas (1024 Shots)
+              6. Simulación 3D de Barras Cuánticas ({shotState.totalShots} Shots)
             </span>
           </div>
 
@@ -193,10 +206,10 @@ export default function ShotStreamStage({ data, isPlaying, speed = 1.0, onComple
 
             <div className="text-center my-3">
               <div className="font-mono text-3xl font-extrabold text-white tracking-widest drop-shadow-[0_0_15px_rgba(255,234,0,0.8)]">
-                |{shotState.winnerState || '1010'}⟩
+                |{optimalBitstring}⟩
               </div>
               <div className="text-xs font-mono text-amber-400 mt-1">
-                Eigenestado de Mínima Energía: ⟨H_C⟩ = -11.0 eV
+                Eigenestado de Mínima Energía: ⟨H_C⟩ = {typeof energyMin === 'number' ? energyMin.toFixed(4) : energyMin} eV
               </div>
             </div>
 
@@ -205,23 +218,13 @@ export default function ShotStreamStage({ data, isPlaying, speed = 1.0, onComple
               <div className="text-[11px] text-slate-400 border-b border-white/10 pb-1 font-bold">
                 Asignación Binaria Decodificada:
               </div>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="p-1.5 bg-slate-900/80 rounded border border-white/10 flex justify-between">
-                  <span className="text-slate-300">x₁ (q₀):</span>
-                  <span className="text-cyan-300 font-bold">1</span>
-                </div>
-                <div className="p-1.5 bg-slate-900/80 rounded border border-white/10 flex justify-between">
-                  <span className="text-slate-300">x₂ (q₁):</span>
-                  <span className="text-cyan-300 font-bold">0</span>
-                </div>
-                <div className="p-1.5 bg-slate-900/80 rounded border border-white/10 flex justify-between">
-                  <span className="text-slate-300">x₃ (q₂):</span>
-                  <span className="text-cyan-300 font-bold">1</span>
-                </div>
-                <div className="p-1.5 bg-slate-900/80 rounded border border-white/10 flex justify-between">
-                  <span className="text-slate-300">x₄ (q₃):</span>
-                  <span className="text-cyan-300 font-bold">0</span>
-                </div>
+              <div className="grid grid-cols-2 gap-2 text-xs max-h-[140px] overflow-y-auto pr-1">
+                {Object.entries(optimalVariables).map(([varName, val], idx) => (
+                  <div key={varName} className="p-1.5 bg-slate-900/80 rounded border border-white/10 flex justify-between">
+                    <span className="text-slate-300">{varName} (q_{idx}):</span>
+                    <span className="text-cyan-300 font-bold">{val}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -229,11 +232,13 @@ export default function ShotStreamStage({ data, isPlaying, speed = 1.0, onComple
             <div className="mt-3 space-y-2 font-mono text-xs">
               <div className="flex justify-between p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300">
                 <span>Valor Objetivo Óptimo:</span>
-                <span className="font-bold text-white text-sm">f(x*) = 11.0</span>
+                <span className="font-bold text-white text-sm">f(x*) = {optimalValue}</span>
               </div>
               <div className="flex justify-between p-2.5 rounded-xl bg-cyan-950/40 border border-cyan-500/30 text-cyan-300">
                 <span>Restricciones BIP:</span>
-                <span className="font-bold text-emerald-400">100% Factible (Válido)</span>
+                <span className={`font-bold ${isFeasible ? 'text-emerald-400' : 'text-amber-400'}`}>
+                  {isFeasible ? '100% Factible (Válido)' : 'No Factible'}
+                </span>
               </div>
             </div>
           </div>

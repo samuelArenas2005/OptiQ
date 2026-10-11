@@ -171,28 +171,39 @@ export default function CodeParserStage({ data, isPlaying, speed = 1.0, onComple
             Restricciones Descompuestas
           </h4>
 
-          <div className="space-y-2 mt-1">
-            <div
-              className={`p-2.5 rounded-xl border text-xs font-mono transition-all duration-300 ${
-                parsedTokens.some((t) => t.id === 'C1')
-                  ? 'bg-amber-950/40 border-amber-500/50 text-amber-200 opacity-100 shadow-[0_0_10px_rgba(255,234,0,0.12)]'
-                  : 'bg-slate-900/40 border-white/5 text-slate-600 opacity-40'
-              }`}
-            >
-              <div className="font-semibold text-amber-300 text-[11px] mb-0.5">C1: Mochila / Capacidad</div>
-              <div>2·x₁ + 3·x₂ + 4·x₃ + 2·x₄ ≤ 6</div>
-            </div>
-
-            <div
-              className={`p-2.5 rounded-xl border text-xs font-mono transition-all duration-300 ${
-                parsedTokens.some((t) => t.id === 'C2')
-                  ? 'bg-amber-950/40 border-amber-500/50 text-amber-200 opacity-100 shadow-[0_0_10px_rgba(255,234,0,0.12)]'
-                  : 'bg-slate-900/40 border-white/5 text-slate-600 opacity-40'
-              }`}
-            >
-              <div className="font-semibold text-amber-300 text-[11px] mb-0.5">C2: Exclusión Mutua</div>
-              <div>x₁ + x₃ ≤ 1 (Acoplamiento de Conflicto)</div>
-            </div>
+          <div className="space-y-2 mt-1 max-h-[160px] overflow-y-auto pr-1">
+            {((data.code.constraints && data.code.constraints.length > 0)
+              ? data.code.constraints
+              : [
+                  { id: 'C1', name: 'Mochila / Capacidad', text: '2·x₁ + 3·x₂ + 4·x₃ + 2·x₄ ≤ 6' },
+                  { id: 'C2', name: 'Exclusión Mutua', text: 'x₁ + x₃ ≤ 1 (Acoplamiento de Conflicto)' }
+                ]
+            ).map((c, idx) => {
+              const cId = c.id || `C${idx + 1}`;
+              const isFound = parsedTokens.some((t) => t.id === cId) || parsedTokens.some((t) => t.type === 'constraint');
+              
+              let descText = c.text;
+              if (!descText && c.linear) {
+                const terms = Object.entries(c.linear).map(([k, v]) => `${v === 1 ? '' : v + '·'}${k}`).join(' + ');
+                descText = `${terms} ${c.sense || '<='} ${c.rhs ?? ''}`;
+              }
+              
+              return (
+                <div
+                  key={cId}
+                  className={`p-2.5 rounded-xl border text-xs font-mono transition-all duration-300 ${
+                    isFound
+                      ? 'bg-amber-950/40 border-amber-500/50 text-amber-200 opacity-100 shadow-[0_0_10px_rgba(255,234,0,0.12)]'
+                      : 'bg-slate-900/40 border-white/5 text-slate-600 opacity-40'
+                  }`}
+                >
+                  <div className="font-semibold text-amber-300 text-[11px] mb-0.5">
+                    {cId}: {c.name || 'Restricción Lineal'}
+                  </div>
+                  <div>{descText || c.rawConstraint || `Restricción ${cId}`}</div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -206,10 +217,14 @@ export default function CodeParserStage({ data, isPlaying, speed = 1.0, onComple
         >
           <div className="font-mono text-xs font-bold text-purple-300 flex items-center gap-1.5 mb-1">
             <span className="w-2 h-2 rounded-full bg-purple-400 shadow-[0_0_6px_#c084fc]" />
-            Objetivo: Maximize ∑ cᵢ xᵢ
+            Objetivo: {data.code.objective?.sense === 'minimize' ? 'Minimize' : 'Maximize'} ∑ cᵢ xᵢ
           </div>
           <div className="font-mono text-xs text-slate-200">
-            f(x) = 5·x₁ + 4·x₂ + 7·x₃ + 3·x₄
+            {data.code.objective?.rawText
+              ? `f(x) = ${data.code.objective.rawText}`
+              : data.code.objective?.linear
+              ? `f(x) = ${Object.entries(data.code.objective.linear).map(([k, v]) => `${v === 1 ? '' : v + '·'}${k}`).join(' + ')}`
+              : 'f(x) = 5·x₁ + 4·x₂ + 7·x₃ + 3·x₄'}
           </div>
         </div>
       </div>

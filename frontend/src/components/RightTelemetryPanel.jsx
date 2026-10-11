@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import AtomLoader from './AtomLoader';
 import Visualizer3D from './Visualizer3D';
-import BarChartVisualizer3D from './BarChartVisualizer3D';
 
 export default function RightTelemetryPanel({
   onRun,
@@ -196,19 +195,6 @@ export default function RightTelemetryPanel({
                 <span>3D</span>
               </button>
 
-              {/* Tab: Bar Chart Simulation */}
-              <button
-                type="button"
-                onClick={() => setTab('barras')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-t-lg transition-colors cursor-pointer shrink-0 ${
-                  currentTab === 'barras'
-                    ? 'bg-surface-container-lowest text-emerald-600 dark:text-emerald-400 font-semibold shadow-sm border-t-2 border-emerald-500'
-                    : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 font-medium'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[15px] text-emerald-500">bar_chart</span>
-                <span>Barras 3D</span>
-              </button>
 
               {/* Tab 4: QAOA Hyperparameters */}
               <button
@@ -754,33 +740,6 @@ export default function RightTelemetryPanel({
               </div>
             )}
 
-            {/* ================= TAB: 3D NEON BAR CHART SIMULATION ================= */}
-            {currentTab === 'barras' && (
-              <div className="flex-1 flex flex-col min-h-[360px]">
-                <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-outline-variant/30">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-semibold text-on-surface">Simulación por Épocas QAOA / PINN</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded font-mono bg-emerald-500/10 text-emerald-500 font-medium">
-                      Three.js Neón
-                    </span>
-                  </div>
-                  <a
-                    href="/barras.html"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-[11px] text-primary hover:underline font-mono"
-                    title="Abrir en pestaña nueva del navegador"
-                  >
-                    <span>Pestaña nueva</span>
-                    <span className="material-symbols-outlined text-[14px]">open_in_new</span>
-                  </a>
-                </div>
-
-                <div className="flex-1 rounded-xl overflow-hidden border border-outline-variant/40 relative">
-                  <BarChartVisualizer3D />
-                </div>
-              </div>
-            )}
 
             {/* ================= TAB 4: HIPERPARÁMETROS QAOA ================= */}
             {currentTab === 'params' && (
