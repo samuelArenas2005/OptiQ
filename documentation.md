@@ -32,6 +32,7 @@ There are two ways to use it:
 9. [How it works](#how-it-works)
 10. [Make it yours](#make-it-yours)
 11. [Credits](#credits)
+12. [Project Structure & In-Depth Guide](#project-structure--in-depth-guide)
 
 ---
 
@@ -268,6 +269,13 @@ requirements.txt                     qiskit, qiskit-optimization, numpy, scipy
 
 ---
 
+## Project Structure & In-Depth Guide
+
+For detailed, step-by-step instructions on running the project locally (FastAPI backend + React Vite frontend), full production deployment with Docker Compose on Oracle Cloud Infrastructure (OCI), API endpoint specifications (`POST /api/solve`), and the complete file tree, please visit the **[README.md](README.md)** (or on GitHub: **[README.md](https://github.com/samuelArenas2005/OptiQ/blob/main/README.md)**).
+
+
+---
+
 ## Make it yours
 
 1. **Add a problem.** Add an entry to `BENCHMARKS` in `main.py` with MiniZinc code using `var 0..1` variables, or paste it into the [web IDE](https://opti-q.vercel.app/).
@@ -278,7 +286,7 @@ requirements.txt                     qiskit, qiskit-optimization, numpy, scipy
 
 ## Credits
 
-OptiQ is by [Ckancord33](https://github.com/Ckancord33), [samuelArenas2005](https://github.com/samuelArenas2005), [theClowner](https://github.com/theClowner) and [Danicol12](https://github.com/Danicol12), released under the MIT License (see `LICENSE`).
+OptiQ is by [Ckancord33](https://github.com/Ckancord33), [samuelArenas2005](https://github.com/samuelArenas2005), [Sebastian6174](https://github.com/Sebastian6174) and [Danicol12](https://github.com/Danicol12), released under the MIT License (see `LICENSE`).
 
 - Live app: [opti-q.vercel.app](https://opti-q.vercel.app/)
 - Source: [github.com/samuelArenas2005/OptiQ](https://github.com/samuelArenas2005/OptiQ)
