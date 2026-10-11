@@ -1,4 +1,5 @@
 import React from 'react';
+import { API_BASE } from '../services/quantumApi';
 
 export default function Header() {
   return (
@@ -20,7 +21,7 @@ export default function Header() {
           <button
             className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container-low hover:text-on-surface transition-colors cursor-pointer"
             title="Ajustes de entorno"
-            onClick={() => alert('Configuración: Backend conectado en http://127.0.0.1:8000')}
+            onClick={() => alert(`Configuración del servidor:\nBackend API conectado en: ${API_BASE}`)}
           >
             <span className="material-symbols-outlined text-[18px]">settings</span>
           </button>

@@ -2,7 +2,16 @@
  * quantumApi.js - Interacción directa y optimizada con el backend FastAPI (router.py)
  */
 
-const API_BASE = 'http://127.0.0.1:8000/api';
+// Configuración dinámica de la URL del backend mediante variables de entorno Vite
+const rawEnvUrl = import.meta.env?.VITE_API_URL || import.meta.env?.VITE_BACKEND_URL;
+
+export const API_BASE = (() => {
+  if (!rawEnvUrl || typeof rawEnvUrl !== 'string' || !rawEnvUrl.trim()) {
+    return 'http://127.0.0.1:8000/api';
+  }
+  const clean = rawEnvUrl.trim().replace(/\/+$/, '');
+  return clean.endsWith('/api') ? clean : `${clean}/api`;
+})();
 
 export async function runQuantumSolver(code, options = {}, onProgress = () => {}) {
   const {
@@ -77,7 +86,7 @@ export async function runQuantumSolver(code, options = {}, onProgress = () => {}
     }
     return {
       success: false,
-      error: `No se pudo conectar con el backend FastAPI (http://127.0.0.1:8000): ${err.message}`,
+      error: `No se pudo conectar con el backend FastAPI (${API_BASE}): ${err.message}`,
       timestamp: new Date().toLocaleTimeString()
     };
   }

@@ -38,7 +38,7 @@ There are two ways to use it:
 ## What it shows
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/samuelArenas2005/OptiQ/main/docs/assets/demo.png" alt="OptiQ IDE overview" width="900" />
+  <img src="./docs/assets/demo.png" alt="OptiQ IDE overview" width="900" />
 </p>
 
 ### The interface
