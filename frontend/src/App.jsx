@@ -215,6 +215,11 @@ export default function App() {
         isOpen={isPipelineModalOpen}
         onClose={() => setIsPipelineModalOpen(false)}
         initialCode={tabs.find((t) => t.id === activeTabId)?.content || DEFAULT_CODE}
+        result={result}
+        isLoading={isLoading}
+        loadingStep={loadingStep}
+        loadingMessage={loadingMessage}
+        hyperparams={hyperparams}
       />
     </div>
   );

@@ -8,16 +8,17 @@ export default function CircuitComposerStage({ data, isPlaying, speed = 1.0, onC
   const [activeGateInfo, setActiveGateInfo] = useState(null);
 
   const circuit = data.circuit;
-  const wires = circuit.wires;
+  const wires = circuit.wires || ["q0", "q1", "q2", "q3"];
+  const nQ = wires.length;
 
   const stepDescriptions = [
-    { title: "Trazando Hilos Cuánticos", desc: "Inicializando 4 registros de qubits en el estado fundamental |0000⟩" },
-    { title: "Paso 1: Superposición Uniforme", desc: "Colocando compuertas Hadamard H en todos los qubits: H|0⟩ = |+⟩" },
+    { title: "Trazando Hilos Cuánticos", desc: `Inicializando ${nQ} registros de qubits en el estado fundamental |${'0'.repeat(nQ)}⟩` },
+    { title: "Paso 1: Superposición Uniforme", desc: `Colocando compuertas Hadamard H en todos los ${nQ} qubits: H|0⟩ = |+⟩` },
     { title: "Paso 2: Entrelazamiento de Costo R_ZZ", desc: "Acoplando pares de qubits según la topología QUBO con rotaciones e^{-i γ₁ J_ij Z_i Z_j}" },
     { title: "Paso 3: Rotaciones Lineales R_Z", desc: "Aplicando campos magnéticos virtuales locales R_Z(2γ₁ h_i)" },
     { title: "Paso 4: Capa Mezcladora Pauli-X R_X", desc: "Insertando operadores de difusión transversal e^{-i β₁ ∑ X_i} con ángulo β₁" },
-    { title: "Paso 5: Capa Variacional 2 (p=2)", desc: "Construyendo la segunda capa de ansatz con ángulos óptimos (γ₂, β₂)" },
-    { title: "Paso 6: Registro de Medición M", desc: "Acoplando detectores proyectivos en base computacional Z hacia el registro clásico" }
+    { title: `Paso 5: Capa Variacional 2 (p=${circuit.pLayers || 2})`, desc: "Construyendo la segunda capa de ansatz con ángulos óptimos (γ₂, β₂)" },
+    { title: "Paso 6: Registro de Medición M", desc: `Acoplando detectores proyectivos en base computacional Z hacia el registro clásico de ${nQ} bits` }
   ];
 
   useEffect(() => {
@@ -89,7 +90,7 @@ export default function CircuitComposerStage({ data, isPlaying, speed = 1.0, onC
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#38bdf8]" />
           <span className="font-mono text-xs font-bold text-cyan-300 tracking-wider uppercase">
-            5. Construcción Progresiva del Circuito QAOA (Ansatz de 4 Qubits)
+            5. Construcción Progresiva del Circuito QAOA (Ansatz de {nQ} Qubits)
           </span>
         </div>
 
@@ -176,7 +177,7 @@ export default function CircuitComposerStage({ data, isPlaying, speed = 1.0, onC
                 >
                   R_ZZ
                   {/* Conector vertical visual si el qubit está acoplado con otro */}
-                  {qIdx < 3 && constructionStep >= 2 && (
+                  {qIdx < wires.length - 1 && constructionStep >= 2 && (
                     <div className="absolute top-9 left-1/2 w-[2px] h-6 bg-purple-400 shadow-[0_0_6px_#c084fc] z-0 pointer-events-none" />
                   )}
                 </div>

@@ -89,9 +89,11 @@ export default function GraphQuboStage({ data, isPlaying, speed = 1.0, onComplet
 
     // 2. Crear Enlaces 3D (Acoplamientos Cuadráticos J_ij)
     const edgeMeshes = [];
-    qubo.edges.forEach((edge, i) => {
-      const uNode = qubo.nodes[edge.u];
-      const vNode = qubo.nodes[edge.v];
+    (qubo.edges || []).forEach((edge, i) => {
+      const uNode = qubo.nodes[edge.u] || qubo.nodes.find(n => n.id === edge.u);
+      const vNode = qubo.nodes[edge.v] || qubo.nodes.find(n => n.id === edge.v);
+      if (!uNode || !vNode) return;
+
       const start = new THREE.Vector3(uNode.x, uNode.y, uNode.z);
       const end = new THREE.Vector3(vNode.x, vNode.y, vNode.z);
 
@@ -237,8 +239,11 @@ export default function GraphQuboStage({ data, isPlaying, speed = 1.0, onComplet
             </span>
           </div>
 
-          <div className="flex-1 flex flex-col justify-center">
-            <div className="grid grid-cols-4 gap-1.5 font-mono text-xs">
+          <div className="flex-1 flex flex-col justify-center overflow-auto max-h-[220px]">
+            <div
+              className="grid gap-1.5 font-mono text-xs"
+              style={{ gridTemplateColumns: `repeat(${qubo.matrix.length || 4}, minmax(0, 1fr))` }}
+            >
               {qubo.matrix.map((row, rIdx) =>
                 row.map((val, cIdx) => {
                   const isDiag = rIdx === cIdx;

@@ -9,7 +9,7 @@ export default function BarChartVisualizer3D({ customData = null }) {
   const [selectedMockName, setSelectedMockName] = useState(MOCK_ACTIVO || 'mock3');
   const [shotState, setShotState] = useState({
     currentShot: 1,
-    totalShots: 1024,
+    totalShots: activeDataset?.shots?.length || 1024,
     currentShotState: '',
     progress: 0,
     isWinner: false,
