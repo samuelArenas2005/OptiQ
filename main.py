@@ -14,7 +14,8 @@ Este script ejecuta sobre el entorno local o directamente en el runtime de Qolla
 Reconoce la variable global `backend` provista por Qollab si está disponible.
 
 Ejecución:
-    python main.py                  # Ejecuta el problema clásico de la Mochila (Knapsack)
+    python main.py                  # Ejecuta el problema clásico de la Mochila (Knapsack 4 vars)
+    python main.py knapsack8        # Ejecuta la Mochila con 8 variables de decisión (12 Qubits)
     python main.py maxcut           # Ejecuta el problema de Corte Máximo (Max-Cut)
     python main.py setcover         # Ejecuta el problema de Cobertura de Conjuntos (Set Cover)
     python main.py --server         # Levanta el servidor FastAPI (Uvicorn) en el puerto 8000
@@ -112,6 +113,24 @@ constraint s[1] + s[4] >= 1;
 % Minimizar numero de conjuntos seleccionados
 solve minimize s[1] + s[2] + s[3] + s[4];
 """
+    },
+    "knapsack8": {
+        "title": "Problema de la Mochila Binaria de 8 Variables (0/1 Knapsack 8-Var)",
+        "description": "Seleccionar el subconjunto de 8 objetos de mayor valor sin exceder la capacidad máxima de 15.",
+        "code": """% 0/1 Knapsack Problem (8 Variables de Decision)
+int: n = 8;
+int: capacity = 15;
+array[1..8] of int: weights = [2, 3, 4, 5, 2, 4, 6, 3];
+array[1..8] of int: values  = [4, 5, 7, 9, 3, 6, 11, 5];
+
+array[1..8] of var 0..1: x;
+
+% Restriccion de peso maximo
+constraint sum(i in 1..n)(weights[i] * x[i]) <= capacity;
+
+% Objetivo: Maximizar valor total
+solve maximize sum(i in 1..n)(values[i] * x[i]);
+"""
     }
 }
 
@@ -121,6 +140,94 @@ def _bar(value: float, width: int = 24, lo: float = 0.0, hi: float = 1.0) -> str
     frac = 0.0 if hi == lo else max(0.0, min(1.0, (value - lo) / (hi - lo)))
     filled = int(round(frac * width))
     return "#" * filled + "." * (width - filled)
+
+
+def solve_classical_exact(binary_problem: Any) -> dict:
+    """
+    Solucionador clásico determinista (Branch & Bound exhaustivo O(2^n))
+    para obtener el Ground Truth óptimo absoluto y evaluar el Ratio de Aproximación de QAOA.
+    """
+    parsed_model = getattr(binary_problem, "parsed_model", None)
+    topology = getattr(binary_problem, "topology", {})
+    original_qp = topology.get("original_qp")
+
+    if parsed_model is not None and getattr(parsed_model, "variables", None):
+        user_vars = list(parsed_model.variables.keys())
+    elif original_qp is not None:
+        user_vars = [v.name for v in original_qp.variables]
+    else:
+        return {}
+
+    n = len(user_vars)
+    if n > 22:
+        return {}
+
+    is_maximize = True
+    if parsed_model is not None and parsed_model.objective:
+        is_maximize = parsed_model.objective.get("sense", "maximize").lower() == "maximize"
+    elif original_qp is not None:
+        is_maximize = original_qp.objective.sense.name == "MAXIMIZE"
+
+    best_val = None
+    best_bits = None
+    best_solution = None
+
+    for i in range(1 << n):
+        bit_str = f"{i:0{n}b}"
+        val_map = {user_vars[j]: int(bit_str[j]) for j in range(n)}
+
+        # Comprobar restricciones del modelo MiniZinc
+        feasible = True
+        if parsed_model is not None and getattr(parsed_model, "constraints", None):
+            for cn in parsed_model.constraints:
+                lhs = sum(val_map.get(k, 0) * coeff for k, coeff in cn.get("linear", {}).items())
+                rhs = float(cn.get("rhs", 0.0))
+                sense = cn.get("sense", "<=")
+                if sense == "<=" and lhs > rhs + 1e-5:
+                    feasible = False
+                    break
+                elif sense == ">=" and lhs < rhs - 1e-5:
+                    feasible = False
+                    break
+                elif sense == "==" and abs(lhs - rhs) > 1e-5:
+                    feasible = False
+                    break
+        elif original_qp is not None:
+            feasible = bool(original_qp.is_feasible([val_map[v] for v in user_vars]))
+
+        if not feasible:
+            continue
+
+        # Evaluar función objetivo
+        fval = 0.0
+        if parsed_model is not None and parsed_model.objective:
+            fval = float(parsed_model.objective.get("constant", 0.0))
+            for v, coeff in parsed_model.objective.get("linear", {}).items():
+                fval += val_map.get(v, 0) * float(coeff)
+        elif original_qp is not None:
+            fval = float(original_qp.objective.evaluate([val_map[v] for v in user_vars]))
+
+        if best_val is None:
+            best_val = fval
+            best_bits = bit_str
+            best_solution = val_map
+        else:
+            if is_maximize and fval > best_val:
+                best_val = fval
+                best_bits = bit_str
+                best_solution = val_map
+            elif not is_maximize and fval < best_val:
+                best_val = fval
+                best_bits = bit_str
+                best_solution = val_map
+
+    return {
+        "best_value": round(best_val, 2) if best_val is not None else 0.0,
+        "best_solution": best_solution or {},
+        "best_bitstring": best_bits or "",
+        "is_maximize": is_maximize,
+        "feasible_found": best_val is not None
+    }
 
 
 def run_optiq_demo(benchmark_key: str = "knapsack", p_steps: int = 2, shots: int = 8192):
@@ -238,8 +345,11 @@ def run_optiq_demo(benchmark_key: str = "knapsack", p_steps: int = 2, shots: int
     exec_time = qaoa_result.get("execution_time_ms", t_quantum)
     qubits_cnt = qaoa_result.get("qubits_count", 7)
 
+    n_decision = len(parsed_model.variables) if parsed_model and getattr(parsed_model, "variables", None) else 4
+    n_slack = max(0, qubits_cnt - n_decision)
+
     print(f"    -> Disparos (Shots)     : {shots:,}")
-    print(f"    -> Qubits del Circuito  : {qubits_cnt} (4 de decisión + {qubits_cnt - 4} de holgura/slack)")
+    print(f"    -> Qubits del Circuito  : {qubits_cnt} ({n_decision} de decisión + {n_slack} de holgura/slack)")
     print(f"    -> Tiempo de Simulacion : {exec_time:.2f} ms")
     print(f"    -> Optimizador Clasico  : {qaoa_result.get('optimizer_used', 'COBYLA')}")
     print(f"    -> Hardware / Backend   : {qaoa_result.get('hardware', 'Vectorized Quantum Statevector')}")
@@ -260,11 +370,48 @@ def run_optiq_demo(benchmark_key: str = "knapsack", p_steps: int = 2, shots: int
         peak = "<-- OPTIMO" if sample.get("peak") else ""
         print(f"    |{bits}>        {prob*100:5.1f}%  {_bar(prob, 14)}  {fval:7.2f}     {feas}    {peak}")
 
+    # 7. COMPARACIÓN Y BENCHMARKING CLÁSICO DETERMINISTA (GROUND TRUTH)
+    print("\n[PASO 7] Verificacion con Algoritmo Clasico Determinista (Ground Truth):")
+    t0_exact = time.perf_counter()
+    exact_res = solve_classical_exact(binary_problem)
+    t_exact_ms = (time.perf_counter() - t0_exact) * 1000
+
+    exact_val = exact_res.get("best_value", 0.0)
+    exact_sol = exact_res.get("best_solution", {})
+    exact_bits = exact_res.get("best_bitstring", "")
+    is_max = exact_res.get("is_maximize", True)
+
+    qaoa_val = float(optimal_val)
+    gap = abs(exact_val - qaoa_val)
+    is_exact_optimum = (gap < 1e-4)
+
+    # Cálculo del Ratio de Aproximación Cuántico (alpha)
+    if is_exact_optimum:
+        approx_ratio = 100.0
+    elif is_max:
+        approx_ratio = max(0.0, min(100.0, (qaoa_val / exact_val) * 100)) if abs(exact_val) > 1e-6 else 0.0
+    else:
+        approx_ratio = max(0.0, min(100.0, (exact_val / qaoa_val) * 100)) if abs(qaoa_val) > 1e-6 else 0.0
+
+    print(f"    -> Algoritmo Clasico     : Busqueda Determinista Exhaustiva Branch & Bound")
+    print(f"    -> Tiempo Clasico        : {t_exact_ms:.2f} ms")
+    print(f"    -> Optimo Global Exacto  : |{exact_bits}> -> {exact_sol}")
+    print(f"    -> Valor Teorico Exacto  : {exact_val:.2f}")
+    print(f"    -> Solucion Hallada QAOA : |{optimal_bitstring}> -> {solution_dict} (Valor = {qaoa_val:.2f})")
+    print(f"    -> Ratio Aproximacion (a): {approx_ratio:.1f}%  [{_bar(approx_ratio/100, 16)}]")
+    if is_exact_optimum:
+        print(f"    -> Diagnostico Optimal   : EXITO TOTAL: QAOA alcanzo el 100% del Optimo Global.")
+    else:
+        print(f"    -> Diagnostico Optimal   : SUB-OPTIMO FACTIBLE (Brecha: {gap:.2f} | Eficiencia Cuantica: {approx_ratio:.1f}%)")
+
     # RESUMEN FINAL
     print("\n" + "=" * 78)
-    print("   [RESUMEN] OPTIMIZACION COMPLETADA EXITOSAMENTE")
-    print(f"   Solucion Factible Optima Encontrada: {solution_dict}")
-    print(f"   Criterio Cumplido: Valor = {optimal_val:.2f} | Tiempo Total: {(t_parse + t_feat + t_pinn + exec_time):.2f} ms")
+    print("   [RESUMEN] OPTIMIZACION CUANTICA Y BENCHMARKING CLASICO")
+    print(f"   Solucion QAOA Obtenida     : {solution_dict} (Valor = {qaoa_val:.2f})")
+    print(f"   Optimo Global Determinista : {exact_sol} (Valor = {exact_val:.2f})")
+    print(f"   Ratio de Aproximacion (a)  : {approx_ratio:.1f}% [{'OPTIMO GLOBAL 100%' if is_exact_optimum else 'SOLUCION APROXIMADA'}]")
+    print(f"   Veredicto de Optimalidad   : {'QAOA descubrio el Ground State optimo global' if is_exact_optimum else f'QAOA encontro una aproximacion factible con brecha de {gap:.2f}'}")
+    print(f"   Tiempo Total de Computo    : {(t_parse + t_feat + t_pinn + exec_time + t_exact_ms):.2f} ms (Cuantico: {exec_time:.2f} ms | Clasico: {t_exact_ms:.2f} ms)")
     print("=" * 78 + "\n")
 
     # WIDGETS DE QOLLAB (Circuit y Probabilities):
