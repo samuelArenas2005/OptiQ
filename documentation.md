@@ -245,11 +245,12 @@ $$\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{quantum}} + \lambda_{\text{phy
 #### 3. Validation and Benchmarks
 - **Dataset:** 10,000 systematically solved BIP instances in [`backend/dataset/qaoa_pignn_dataset.csv`](https://github.com/samuelArenas2005/OptiQ/blob/main/backend/dataset/qaoa_pignn_dataset.csv).
 - **Stratified 5-Fold Cross Validation:** Generalization error verified at **$\text{MAE} = 0.3037 \pm 0.0038\text{ rad}$**.
-- **Final Model:** 40 epochs with AdamW and Cosine Annealing, achieving **$\text{Val MAE} = 0.3057\text{ rad}$** and physical loss $\mathcal{L}_{\text{phys}} = 0.2678$.
-- **Runtime Performance:** Inference takes **$< 3\text{ ms}$** without external GPU or framework overhead, serving both the local solver and the 3D interactive pipeline visualizer in the frontend.
+- **Runtime Performance & Zero-PyTorch Deployment:** The model is exported to ONNX format ([`pinn_qaoa.onnx`](https://github.com/samuelArenas2005/OptiQ/blob/main/backend/ml/weights/pinn_qaoa.onnx), ~339 KB) and executed via **ONNX Runtime** with pure NumPy arrays. This avoids bloated PyTorch installations in containerized production environments (keeping Docker images featherlight) while delivering **sub-millisecond (< 1 ms)** inference latency on CPU.
 
 **In the code:**
-- Architecture & inference engine: [`pinn_model.py`](https://github.com/samuelArenas2005/OptiQ/blob/main/backend/ml/pinn_model.py)
+- Inference engine (ONNX Runtime + PyTorch fallback): [`pinn_model.py`](https://github.com/samuelArenas2005/OptiQ/blob/main/backend/ml/pinn_model.py)
+- ONNX export utility: [`export_to_onnx.py`](https://github.com/samuelArenas2005/OptiQ/blob/main/backend/ml/export_to_onnx.py)
+- Pretrained weights: [`pinn_qaoa.onnx`](https://github.com/samuelArenas2005/OptiQ/blob/main/backend/ml/weights/pinn_qaoa.onnx) & [`pinn_qaoa_weights.pt`](https://github.com/samuelArenas2005/OptiQ/blob/main/backend/ml/weights/pinn_qaoa_weights.pt)
 - Training & Cross-Validation pipeline: [`train_pinn_qaoa.ipynb`](https://github.com/samuelArenas2005/OptiQ/blob/main/backend/ml/train_pinn_qaoa.ipynb)
 - Mathematical architecture documentation: [`ARCHITECTURE_PINN.md`](https://github.com/samuelArenas2005/OptiQ/blob/main/backend/ml/ARCHITECTURE_PINN.md)
 - QAOA execution & angle binding: `run_qaoa` in [`qaoa_solver.py`](https://github.com/samuelArenas2005/OptiQ/blob/main/backend/quantum/qaoa_solver.py)
