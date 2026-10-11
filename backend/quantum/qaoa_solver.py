@@ -284,6 +284,13 @@ def run_qaoa(
             betas_init = [beta0 * (1.0 - 0.7 * (k / p_steps)) for k in range(p_steps)]
             init_params = gammas_init + betas_init
 
+        init_gammas = [round(float(x), 4) for x in init_params[:p_steps]]
+        init_betas = [round(float(x), 4) for x in init_params[p_steps:]]
+        console_logs.append(
+            f"[INIT] Ángulos iniciales QAOA ({angle_init}, p={p_steps}): "
+            f"γ₀ = {init_gammas}, β₀ = {init_betas}"
+        )
+
         # 4. Función de pérdida del bucle variacional exterior (Outer Loop)
         # Evaluamos <H_cost> exactamente sobre el Statevector de Qiskit en milisegundos
         def loss_function(params):
@@ -587,6 +594,10 @@ def run_qaoa(
             "energy": round(best_energy, 4),
             "state_probability": f"{best_prob * 100:.1f}%",
             "distribution": distribution,
+            "initial_gammas": init_gammas,
+            "initial_betas": init_betas,
+            "optimal_gammas": [round(float(x), 4) for x in best_gammas],
+            "optimal_betas": [round(float(x), 4) for x in best_betas],
             "execution_time_ms": elapsed_ms,
             "qubits_count": qubo_nodes or n_qubits,
             "circuit_depth": circuit_depth,

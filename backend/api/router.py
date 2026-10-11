@@ -149,6 +149,10 @@ async def solve_problem(request: ProblemRequest):
             "circuit_depth": qaoa_results.get("circuit_depth", 0),
             "hardware": qaoa_results.get("hardware", "Qiskit AerSimulator (Statevector Acelerado)"),
             "qasm": qaoa_results.get("qasm", ""),
+            "initial_gammas": qaoa_results.get("initial_gammas", []),
+            "initial_betas": qaoa_results.get("initial_betas", []),
+            "optimal_gammas": qaoa_results.get("optimal_gammas", []),
+            "optimal_betas": qaoa_results.get("optimal_betas", []),
             "console_logs": qaoa_results.get("console_logs", [])
         }
     }

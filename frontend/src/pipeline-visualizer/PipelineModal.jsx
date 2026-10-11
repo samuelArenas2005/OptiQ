@@ -122,6 +122,11 @@ export default function PipelineModal({
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                 <span>Real Backend Connected ({pipelineData.circuit?.qubitsCount || 4} Qubits | {result.details?.hardware || 'Qiskit Aer'})</span>
               </span>
+            ) : result && !result.success ? (
+              <span className="hidden sm:inline-flex items-center gap-1.5 font-mono text-[10px] bg-red-950/80 border border-red-500/50 text-red-300 px-2.5 py-0.5 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                <span>Execution Failed</span>
+              </span>
             ) : (
               <span className="hidden sm:inline-block font-mono text-[10px] bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 px-2 py-0.5 rounded-full">
                 End-to-End BIP → PINN → QAOA
@@ -139,7 +144,8 @@ export default function PipelineModal({
                 <button
                   key={stg.id}
                   onClick={() => setCurrentStep(idx)}
-                  className={`px-2.5 py-1 rounded-lg font-mono text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                  disabled={result && !result.success}
+                  className={`px-2.5 py-1 rounded-lg font-mono text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed ${
                     isActive
                       ? 'bg-cyan-500 text-slate-950 font-bold shadow-[0_0_12px_#38bdf8]'
                       : isPassed
@@ -177,15 +183,36 @@ export default function PipelineModal({
           </div>
         </header>
 
-        {/* Central Area: Active Stage Visualizer */}
-        <main className="flex-1 min-h-0 w-full overflow-hidden relative">
-          <ActiveStageComponent
-            data={pipelineData}
-            isPlaying={isPlaying}
-            speed={speed}
-            onComplete={handleStageComplete}
-          />
-        </main>
+        {/* Central Area: Active Stage Visualizer OR Error View */}
+        {result && !result.success ? (
+          <main className="flex-1 min-h-0 w-full overflow-hidden relative flex flex-col items-center justify-center p-6 text-center select-text">
+            <div className="max-w-md bg-red-950/30 border border-red-500/40 p-6 rounded-2xl flex flex-col items-center gap-3 shadow-[0_0_30px_rgba(239,68,68,0.2)]">
+              <span className="material-symbols-outlined text-[42px] text-red-400">error</span>
+              <h3 className="text-base font-bold text-white">Quantum Pipeline Cannot Be Visualized</h3>
+              <p className="text-xs text-slate-300">
+                The MiniZinc model contains syntax or compilation errors and could not be solved by the backend. All visualizations require real quantum execution data.
+              </p>
+              <div className="w-full bg-black/70 p-3 rounded-lg border border-red-500/30 text-left font-mono text-[11px] text-red-300 break-words max-h-36 overflow-y-auto">
+                {result.error || 'Syntax or parse error in model.'}
+              </div>
+              <button
+                onClick={onClose}
+                className="mt-2 px-4 py-2 bg-red-600/30 hover:bg-red-600/50 text-white rounded-xl text-xs font-semibold cursor-pointer border border-red-500/40 transition-colors"
+              >
+                Close Visualizer &amp; View Error in Console
+              </button>
+            </div>
+          </main>
+        ) : (
+          <main className="flex-1 min-h-0 w-full overflow-hidden relative">
+            <ActiveStageComponent
+              data={pipelineData}
+              isPlaying={isPlaying}
+              speed={speed}
+              onComplete={handleStageComplete}
+            />
+          </main>
+        )}
 
         {/* Bottom Playback Control Bar */}
         <footer className="px-5 py-2.5 bg-slate-900/90 border-t border-cyan-500/20 flex flex-wrap items-center justify-between gap-3 shrink-0">
@@ -194,7 +221,7 @@ export default function PipelineModal({
             {/* Previous Step */}
             <button
               onClick={() => setCurrentStep((prev) => Math.max(0, prev - 1))}
-              disabled={currentStep === 0}
+              disabled={currentStep === 0 || (result && !result.success)}
               className="px-2.5 py-1 bg-white/5 hover:bg-cyan-500/20 border border-white/10 text-white rounded-lg transition-all disabled:opacity-40 cursor-pointer"
             >
               ⏮ Previous
@@ -203,7 +230,8 @@ export default function PipelineModal({
             {/* Play / Pause */}
             <button
               onClick={() => setIsPlaying(!isPlaying)}
-              className="px-3.5 py-1 bg-gradient-to-r from-sky-600 to-blue-700 hover:from-sky-500 hover:to-blue-600 border border-cyan-400 text-white rounded-lg font-semibold transition-all shadow-md cursor-pointer"
+              disabled={result && !result.success}
+              className="px-3.5 py-1 bg-gradient-to-r from-sky-600 to-blue-700 hover:from-sky-500 hover:to-blue-600 border border-cyan-400 text-white rounded-lg font-semibold transition-all shadow-md cursor-pointer disabled:opacity-40"
             >
               {isPlaying ? '⏸ Pause' : '▶ Resume'}
             </button>
@@ -211,7 +239,7 @@ export default function PipelineModal({
             {/* Next Step */}
             <button
               onClick={() => setCurrentStep((prev) => Math.min(STAGES.length - 1, prev + 1))}
-              disabled={currentStep === STAGES.length - 1}
+              disabled={currentStep === STAGES.length - 1 || (result && !result.success)}
               className="px-2.5 py-1 bg-white/5 hover:bg-cyan-500/20 border border-white/10 text-white rounded-lg transition-all disabled:opacity-40 cursor-pointer"
             >
               Next ⏭
@@ -220,7 +248,8 @@ export default function PipelineModal({
             {/* Restart */}
             <button
               onClick={handleRestart}
-              className="p-1 bg-white/5 hover:bg-cyan-500/20 border border-white/10 text-cyan-300 hover:text-white rounded-lg transition-all cursor-pointer"
+              disabled={result && !result.success}
+              className="p-1 bg-white/5 hover:bg-cyan-500/20 border border-white/10 text-cyan-300 hover:text-white rounded-lg transition-all cursor-pointer disabled:opacity-40"
               title="Restart flow from Step 1"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -232,9 +261,15 @@ export default function PipelineModal({
 
           {/* Current Step Info */}
           <div className="font-mono text-xs text-slate-300">
-            STAGE:{' '}
-            <span className="text-cyan-400 font-bold">{currentStep + 1} / {STAGES.length}</span> —{' '}
-            <span className="text-white font-semibold">{STAGES[currentStep].name}</span>
+            {result && !result.success ? (
+              <span className="text-red-400 font-semibold">Simulation Failed — Fix errors to visualize real data</span>
+            ) : (
+              <>
+                STAGE:{' '}
+                <span className="text-cyan-400 font-bold">{currentStep + 1} / {STAGES.length}</span> —{' '}
+                <span className="text-white font-semibold">{STAGES[currentStep].name}</span>
+              </>
+            )}
           </div>
 
           {/* Speed Selector and Auto-advance */}

@@ -160,6 +160,24 @@ function generateRealShotsSequence(distribution, counts, totalShotsTarget = 1024
  * NOTA: La pestaña 4 (pinn) siempre conserva los datos mock según los requisitos.
  */
 export function adaptBackendDataToPipeline(backendResult, rawCode, hyperparams) {
+  if (backendResult && backendResult.success === false) {
+    return {
+      hasError: true,
+      errorMessage: backendResult.error || 'Execution failed',
+      code: {
+        raw: rawCode || '',
+        lines: [],
+        variables: [],
+        constraintsCount: 0
+      },
+      qubo: { nodes: [], edges: [], matrix: [], formula: '' },
+      features: { density: 0, spectralGapLambda2: 0, spectralRadius: 0, frustrationIndex: 0, featureVector: [] },
+      pinn: { architecture: { layers: [0], layerNames: [] }, predictions: { gamma: [], beta: [], formatted: [] } },
+      circuit: { pLayers: 0, qubitsCount: 0, wires: [], stages: [] },
+      shots: { totalShots: 0, optimalState: '', optimalValue: 0, distribution: [], streamSample: [] }
+    };
+  }
+
   if (!backendResult || !backendResult.success || !backendResult.details) {
     // Si aún no se ha ejecutado el backend, usar el código actual para la etapa 1 y mock para el resto
     const parsedCode = parseMiniZincCode(rawCode);
