@@ -12,7 +12,9 @@ export async function runQuantumSolver(code, options = {}, onProgress = () => {}
     optimizer = 'COBYLA',
     angleInit = 'Automática',
     gamma0 = 0.39,
-    beta0 = 0.78
+    beta0 = 0.78,
+    backend = null,
+    backendConfig = null
   } = options;
 
   onProgress({ step: 1, message: 'Enviando modelo MiniZinc y ejecutando pipeline concurrente...' });
@@ -36,7 +38,9 @@ export async function runQuantumSolver(code, options = {}, onProgress = () => {}
         optimizer: optimizer,
         angle_init: angleInit,
         gamma0: gamma0 !== undefined ? Number(gamma0) : 0.39,
-        beta0: beta0 !== undefined ? Number(beta0) : 0.78
+        beta0: beta0 !== undefined ? Number(beta0) : 0.78,
+        backend: backend || undefined,
+        backend_config: backendConfig || undefined
       }),
       signal: controller.signal
     });
