@@ -140,6 +140,8 @@ cython_debug/
 *.pth
 *.bin
 *.onnx
+!backend/ml/weights/pinn_qaoa.onnx
+!backend/ml/weights/pinn_qaoa_weights.pt
 
 # Environment variables
 .env
