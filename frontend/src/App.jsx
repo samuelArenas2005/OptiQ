@@ -212,6 +212,20 @@ export default function App() {
         </div>
       </main>
 
+      {/* Slim IDE Status Bar */}
+      <footer className="w-full px-4 sm:px-6 py-1 bg-surface-container-lowest border-t border-outline-variant/40 flex items-center justify-between text-[10px] sm:text-[11px] font-mono text-outline shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+          <span className="text-on-surface-variant/80 font-medium">OptiQ IDE</span>
+        </div>
+        <div className="opacity-80">
+          This effort is supported by Qollab &amp; IonQ
+        </div>
+        <div className="hidden sm:flex items-center gap-3 opacity-60">
+          <span>Qiskit • IonQ • Qollab</span>
+        </div>
+      </footer>
+
       {/* End-to-End Quantum Pipeline Visualizer */}
       <PipelineModal
         isOpen={isPipelineModalOpen}
