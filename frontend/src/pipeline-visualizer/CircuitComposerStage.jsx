@@ -252,7 +252,7 @@ export default function CircuitComposerStage({ data, isPlaying, speed = 1.0, onC
                     setActiveGateInfo({
                       name: 'Medición M (Z-Basis)',
                       formula: 'M = |0⟩⟨0| + |1⟩⟨1|',
-                      desc: 'Colapsa la superposición hacia un bitstring binario x ∈ {0, 1}⁴.',
+                      desc: `Colapsa la superposición hacia un bitstring binario x ∈ {0, 1}^${nQ}.`,
                     })
                   }
                 >

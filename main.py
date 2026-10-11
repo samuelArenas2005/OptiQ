@@ -297,15 +297,27 @@ def run_optiq_demo(benchmark_key: str = "knapsack", p_steps: int = 5, shots: int
     # 4. RED NEURONAL INFORMADA POR LA FÍSICA (PINN)
     print("\n[PASO 4] Inferencia de Hiperparametros Iniciales (PINN):")
     t0 = time.perf_counter()
-    pinn_params = get_hyperparameters(topology)
+    # Enriquecer la topología con las métricas espectrales extraídas y el tipo de problema
+    pinn_input = {
+        **topology,
+        "global": glob,
+        "problem_type": benchmark_key
+    }
+    pinn_params = get_hyperparameters(pinn_input)
     t_pinn = (time.perf_counter() - t0) * 1000
 
     gamma_0 = pinn_params.get("gamma", [0.39])[0]
     beta_0 = pinn_params.get("beta", [0.78])[0]
+    telemetry = pinn_params.get("telemetry", {})
 
     print(f"    -> Tiempo de Inferencia : {t_pinn:.2f} ms")
     print(f"    -> Gamma Inicial (gamma_0): {gamma_0:.4f} rad (Angulo de rotacion de costo H_C)")
     print(f"    -> Beta Inicial (beta_0)  : {beta_0:.4f} rad (Angulo de rotacion del mezclador H_M)")
+    if "p2" in pinn_params:
+        p2_g = [round(x, 4) for x in pinn_params["p2"]["gamma"]]
+        p2_b = [round(x, 4) for x in pinn_params["p2"]["beta"]]
+        print(f"    -> Angulos Multicapa (p=2): gamma={p2_g}, beta={p2_b}")
+    print(f"    -> Telemetria Sugerida  : Shots={telemetry.get('recommended_shots', shots)}, LR={telemetry.get('recommended_lr_eta', 0.01)}, p*={telemetry.get('target_depth_p_star', 1)}")
     print("    -> Estado               : Evita mesetas esteriles (barren plateaus) vs inicio aleatorio")
 
     # 5. EJECUCIÓN CUÁNTICA CON QAOA

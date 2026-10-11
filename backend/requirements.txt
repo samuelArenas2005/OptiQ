@@ -7,3 +7,6 @@ qiskit-optimization>=0.6.1
 qiskit-ionq>=1.1.0
 scipy>=1.13.0
 numpy>=1.26.4
+pandas>=2.2.0
+scikit-learn>=1.4.0
+matplotlib>=3.8.0

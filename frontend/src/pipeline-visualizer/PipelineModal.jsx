@@ -25,14 +25,27 @@ export default function PipelineModal({
   isLoading = false,
   loadingStep = 1,
   loadingMessage = '',
-  hyperparams = null
+  hyperparams = null,
+  initialStageId = null
 }) {
   const [currentStep, setCurrentStep] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [speed, setSpeed] = useState(1.0);
   const [autoAdvance, setAutoAdvance] = useState(true);
 
-  // Adapta los datos reales de ejecución del backend para todas las pestañas (excepto PINN que queda mock)
+  // Al abrir, si se solicita una etapa específica (ej. 'pinn'), posicionarse directamente en ella
+  useEffect(() => {
+    if (isOpen && initialStageId) {
+      const targetIdx = STAGES.findIndex((s) => s.id === initialStageId);
+      if (targetIdx !== -1) {
+        setCurrentStep(targetIdx);
+      }
+    } else if (isOpen && !initialStageId) {
+      setCurrentStep(0);
+    }
+  }, [isOpen, initialStageId]);
+
+  // Adapta los datos reales de ejecución del backend para todas las pestañas
   const pipelineData = useMemo(() => {
     return adaptBackendDataToPipeline(result, initialCode, hyperparams);
   }, [result, initialCode, hyperparams]);
