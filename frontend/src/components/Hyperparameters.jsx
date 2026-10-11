@@ -19,14 +19,14 @@ export default function Hyperparameters({
       <div className="panel-header">
         <div className="panel-title">
           <Sliders size={14} className="text-blue" />
-          <span>Configuración QAOA &amp; QPU</span>
+          <span>QAOA &amp; QPU Configuration</span>
         </div>
       </div>
 
       <div className="params-grid">
         {/* p-layers stepper */}
         <div className="param-item">
-          <label className="param-label">Capas QAOA (p-steps)</label>
+          <label className="param-label">QAOA Layers (p-steps)</label>
           <div className="stepper-box">
             <button
               onClick={() => onChangePLayers(Math.max(1, pLayers - 1))}
@@ -48,7 +48,7 @@ export default function Hyperparameters({
 
         {/* Shots select */}
         <div className="param-item">
-          <label className="param-label">Disparos (Shots)</label>
+          <label className="param-label">Shots</label>
           <select
             value={shots}
             onChange={(e) => onChangeShots(Number(e.target.value))}
@@ -64,7 +64,7 @@ export default function Hyperparameters({
 
         {/* Optimizer toggles */}
         <div className="param-item full-width">
-          <label className="param-label">Optimizador Clásico</label>
+          <label className="param-label">Classical Optimizer</label>
           <div className="segmented-control">
             {['COBYLA', 'Adam', 'Nelder-Mead'].map((opt) => (
               <button
@@ -81,7 +81,7 @@ export default function Hyperparameters({
 
         {/* Hardware target */}
         <div className="param-item full-width">
-          <label className="param-label">Hardware de Ejecución</label>
+          <label className="param-label">Execution Hardware</label>
           <select
             value={hardware}
             onChange={(e) => onChangeHardware(e.target.value)}
@@ -90,7 +90,7 @@ export default function Hyperparameters({
           >
             <option value="Rigetti Aspen-M3 (45Q)">Rigetti Aspen-M3 (45 Qubits)</option>
             <option value="IBM Quantum Eagle (127Q)">IBM Quantum Eagle (127 Qubits)</option>
-            <option value="Local Statevector Sim">Simulador Local Statevector</option>
+            <option value="Local Statevector Sim">Local Statevector Simulator</option>
           </select>
         </div>
       </div>
@@ -100,7 +100,7 @@ export default function Hyperparameters({
           onClick={onRun}
           disabled={isRunning}
           className="btn-panel-secondary"
-          title="Ejecutar algoritmo y medir distribución"
+          title="Run algorithm and measure distribution"
         >
           <Play size={13} className="fill-current" />
           <span>Run</span>
@@ -110,7 +110,7 @@ export default function Hyperparameters({
           onClick={onRunWithViz}
           disabled={isRunning}
           className="btn-panel-primary"
-          title="Ejecutar y renderizar visualización cuántica 3D"
+          title="Run and render interactive 3D visualization"
         >
           <Sparkles size={13} />
           <span>Run &amp; Visualize</span>

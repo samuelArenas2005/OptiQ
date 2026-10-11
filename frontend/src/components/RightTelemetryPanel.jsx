@@ -93,7 +93,7 @@ export default function RightTelemetryPanel({
 
         <div className="flex flex-col items-center justify-center px-1">
           <span className="text-outline text-[10px] font-sans font-semibold tracking-wide">
-            ESTADO
+            STATUS
           </span>
           <span
             className={`font-bold text-xs mt-0.5 ${
@@ -104,7 +104,7 @@ export default function RightTelemetryPanel({
                 : 'text-error'
             }`}
           >
-            {!hasRun ? 'En espera' : isSuccess ? 'Éxito' : 'Error'}
+            {!hasRun ? 'Idle' : isSuccess ? 'Success' : 'Error'}
           </span>
         </div>
 
@@ -121,7 +121,7 @@ export default function RightTelemetryPanel({
                 : 'text-error'
             }`}
           >
-            {!hasRun ? 'Pendiente' : isSuccess ? 'Validado' : 'Falló'}
+            {!hasRun ? 'Pending' : isSuccess ? 'Validated' : 'Failed'}
           </span>
         </div>
       </div>
@@ -150,7 +150,7 @@ export default function RightTelemetryPanel({
                 }`}
               >
                 <span className="material-symbols-outlined text-[15px] text-tertiary">flare</span>
-                <span>Solución</span>
+                <span>Solution</span>
                 {hasRun && (
                   <span
                     className={`w-1.5 h-1.5 rounded-full ${
@@ -171,7 +171,7 @@ export default function RightTelemetryPanel({
                 }`}
               >
                 <span className="material-symbols-outlined text-[15px] text-primary">terminal</span>
-                <span>Consola</span>
+                <span>Console</span>
                 {hasRun && (
                   <span
                     className={`w-1.5 h-1.5 rounded-full ${
@@ -207,20 +207,20 @@ export default function RightTelemetryPanel({
                 }`}
               >
                 <span className="material-symbols-outlined text-[15px]">tune</span>
-                <span>Parámetros</span>
+                <span>Parameters</span>
               </button>
             </div>
           </div>
 
           {/* Active Tab Body - Scrollable content within the single card */}
           <div className="flex-1 min-h-0 overflow-y-auto p-3.5 flex flex-col">
-            {/* ================= TAB 1: SOLUCIÓN ================= */}
+            {/* ================= TAB 1: SOLUTION ================= */}
             {currentTab === 'solution' && (
               <div className="flex-1 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between pb-2 mb-3 border-b border-outline-variant/30">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-semibold text-on-surface">Resultados QAOA</span>
+                      <span className="text-xs font-semibold text-on-surface">QAOA Results</span>
                       <span
                         className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
                           !hasRun
@@ -230,7 +230,7 @@ export default function RightTelemetryPanel({
                             : 'bg-error/10 text-error font-medium'
                         }`}
                       >
-                        {!hasRun ? 'En espera' : isSuccess ? `${quboNodes} Qubits` : 'Error'}
+                        {!hasRun ? 'Idle' : isSuccess ? `${quboNodes} Qubits` : 'Error'}
                       </span>
                     </div>
 
@@ -239,20 +239,20 @@ export default function RightTelemetryPanel({
                         <button
                           onClick={handleCopyBitstring}
                           className="flex items-center gap-1 px-2 py-0.5 rounded border border-outline-variant/60 bg-surface-container-low hover:bg-surface-container hover:text-primary text-on-surface-variant text-[11px] transition-colors cursor-pointer"
-                          title="Copiar cadena de bits óptima"
+                          title="Copy optimal bitstring"
                         >
                           <span className="material-symbols-outlined text-[13px]">
                             {copiedState ? 'check' : 'content_copy'}
                           </span>
-                          <span>{copiedState ? 'Copiado' : 'Copiar Bits'}</span>
+                          <span>{copiedState ? 'Copied' : 'Copy Bits'}</span>
                         </button>
                         <button
                           onClick={() => window.print()}
                           className="flex items-center gap-1 px-2 py-0.5 rounded border border-outline-variant/60 bg-surface-container-low hover:bg-surface-container hover:text-primary text-on-surface-variant text-[11px] transition-colors cursor-pointer"
-                          title="Exportar solución"
+                          title="Export solution"
                         >
                           <span className="material-symbols-outlined text-[13px]">print</span>
-                          <span>Exportar</span>
+                          <span>Export</span>
                         </button>
                       </div>
                     )}
@@ -263,16 +263,16 @@ export default function RightTelemetryPanel({
                       <span className="material-symbols-outlined text-[32px] opacity-40 mb-1.5 text-primary">
                         biotech
                       </span>
-                      <p className="text-xs font-semibold text-on-surface-variant">Sin simulación calculada</p>
+                      <p className="text-xs font-semibold text-on-surface-variant">No simulation computed</p>
                       <p className="text-[11px] max-w-xs mt-1 text-outline">
-                        Presiona <strong className="text-primary font-medium">RUN</strong> para compilar a QUBO, mapear a Ising y resolver con QAOA simulado en Qiskit.
+                        Press <strong className="text-primary font-medium">RUN</strong> to compile to QUBO, map to Ising, and solve with simulated QAOA on Qiskit.
                       </p>
                     </div>
                   ) : !isSuccess ? (
                     <div className="p-3 bg-error/5 border border-error/20 rounded-lg text-xs text-error font-mono text-center my-auto">
                       <div className="flex items-center justify-center gap-1.5 font-semibold mb-1">
                         <span className="material-symbols-outlined text-[16px]">error</span>
-                        <span>Error al procesar modelo</span>
+                        <span>Error processing model</span>
                       </div>
                       <p className="text-[11px] text-on-surface-variant">{result?.error}</p>
                     </div>
@@ -282,27 +282,27 @@ export default function RightTelemetryPanel({
                       <div className="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-surface-container-low/70 border border-outline-variant/40">
                         <div className="flex flex-col">
                           <span className="text-[10px] text-outline uppercase font-semibold">
-                            Costo / Objetivo Óptimo
+                            Optimal Cost / Objective
                           </span>
                           <span className="text-lg font-bold text-primary font-mono mt-0.5">
                             {details?.optimal_value !== undefined ? details.optimal_value : '—'}
                           </span>
                           <span className="text-[10px] text-outline font-mono">
-                            {parsedSummary?.objective?.sense === 'maximize' ? 'Valor máximo' : 'Valor mínimo'}
+                            {parsedSummary?.objective?.sense === 'maximize' ? 'Maximum value' : 'Minimum value'}
                           </span>
                         </div>
 
                         <div className="flex flex-col border-l border-outline-variant/40 pl-2.5">
                           <div className="flex items-center justify-between">
                             <span className="text-[10px] text-outline uppercase font-semibold">
-                              ⟨H_cost⟩ Hamiltoniano
+                              ⟨H_cost⟩ Hamiltonian
                             </span>
                           </div>
                           <span className="text-sm font-semibold text-on-surface font-mono mt-0.5">
                             {details?.energy !== undefined ? `${details.energy.toFixed(3)} eV` : '—'}
                           </span>
                           <span className="text-[10px] text-outline font-mono">
-                            {details?.execution_time_ms ? `Tiempo: ${details.execution_time_ms} ms` : 'Simulación rápida'}
+                            {details?.execution_time_ms ? `Time: ${details.execution_time_ms} ms` : 'Fast simulation'}
                           </span>
                         </div>
                       </div>
@@ -311,7 +311,7 @@ export default function RightTelemetryPanel({
                       <div className="p-2.5 rounded-xl bg-primary/5 border border-primary/20 flex items-center justify-between">
                         <div>
                           <span className="text-[10px] text-primary uppercase font-semibold tracking-wider block">
-                            Eigenestado Medido (Ground State)
+                            Measured Eigenstate (Ground State)
                           </span>
                           <span className="font-mono text-sm font-bold text-primary mt-0.5 block">
                             |{details?.optimal_bitstring || '—'}⟩
@@ -319,7 +319,7 @@ export default function RightTelemetryPanel({
                         </div>
                         <div className="text-right">
                           <span className="text-[10px] text-outline uppercase font-semibold block">
-                            Probabilidad
+                            Probability
                           </span>
                           <span className="font-mono text-xs font-bold text-secondary bg-secondary/10 px-2 py-0.5 rounded-full mt-0.5 inline-block">
                             {details?.state_probability || '—'}
@@ -332,7 +332,7 @@ export default function RightTelemetryPanel({
                         <div className="flex items-center justify-between mb-1.5">
                           <span className="text-[11px] font-semibold text-on-surface flex items-center gap-1">
                             <span className="material-symbols-outlined text-[14px] text-primary">check_circle</span>
-                            Asignación Óptima de Variables
+                            Optimal Variable Assignment
                           </span>
                           <span className="text-[10px] text-outline font-mono">
                             {solutionEntries.length} variables
@@ -364,7 +364,7 @@ export default function RightTelemetryPanel({
                               );
                             })
                           ) : (
-                            <span className="text-xs text-outline font-mono">Sin variables calculadas</span>
+                            <span className="text-xs text-outline font-mono">No computed variables</span>
                           )}
                         </div>
                       </div>
@@ -375,7 +375,7 @@ export default function RightTelemetryPanel({
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-[11px] font-semibold text-on-surface flex items-center gap-1">
                               <span className="material-symbols-outlined text-[14px] text-tertiary">bar_chart</span>
-                              Distribución de Estados ({hyperparams?.shots ? Number(hyperparams.shots).toLocaleString() : '8,192'} shots)
+                              State Distribution ({hyperparams?.shots ? Number(hyperparams.shots).toLocaleString() : '8,192'} shots)
                             </span>
                             <span className="text-[10px] text-outline font-mono">
                               {hoveredSample
@@ -408,11 +408,11 @@ export default function RightTelemetryPanel({
                                       </span>
                                       {isPeak && (
                                         <span className="text-[9px] px-1 py-0.2 bg-primary/20 text-primary rounded font-sans font-medium">
-                                          Óptimo
+                                          Optimal
                                         </span>
                                       )}
                                       {sample.feasible && !isPeak && (
-                                        <span className="text-[9px] text-secondary">Factible</span>
+                                        <span className="text-[9px] text-secondary">Feasible</span>
                                       )}
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -445,7 +445,7 @@ export default function RightTelemetryPanel({
                 </div>
 
                 <div className="mt-4 pt-2 border-t border-outline-variant/30 text-outline text-[11px] flex items-center justify-between">
-                  <span>{hasRun && isSuccess ? 'Circuito simulado con éxito' : 'Esperando ejecución'}</span>
+                  <span>{hasRun && isSuccess ? 'Circuit simulated successfully' : 'Awaiting execution'}</span>
                   <span className="text-primary font-mono font-medium">
                     {hasRun && isSuccess ? (details?.hardware || 'Qiskit Statevector') : 'qaoa'}
                   </span>
@@ -453,7 +453,7 @@ export default function RightTelemetryPanel({
               </div>
             )}
 
-            {/* ================= TAB 2: CONSOLA & FEATURES ================= */}
+            {/* ================= TAB 2: CONSOLE & FEATURES ================= */}
             {currentTab === 'console' && (
               <div className="flex-1 flex flex-col justify-between">
                 <div>
@@ -469,7 +469,7 @@ export default function RightTelemetryPanel({
                             : 'bg-error/10 text-error font-medium'
                         }`}
                       >
-                        {!hasRun ? 'En espera' : isSuccess ? 'Completado' : 'Error'}
+                        {!hasRun ? 'Idle' : isSuccess ? 'Completed' : 'Error'}
                       </span>
                     </div>
                     {hasRun && (
@@ -484,16 +484,16 @@ export default function RightTelemetryPanel({
                       <span className="material-symbols-outlined text-[32px] opacity-40 mb-1.5 text-primary">
                         terminal
                       </span>
-                      <p className="text-xs font-semibold text-on-surface-variant">Consola en espera</p>
+                      <p className="text-xs font-semibold text-on-surface-variant">Console idle</p>
                       <p className="text-[11px] max-w-xs mt-1 text-outline">
-                        Presiona <strong className="text-primary font-medium">RUN</strong> para extraer las features del grafo y ver la traza del solver.
+                        Press <strong className="text-primary font-medium">RUN</strong> to extract graph features and view the solver trace.
                       </p>
                     </div>
                   ) : !isSuccess ? (
                     <div className="space-y-1.5 font-mono text-xs text-error bg-error/5 p-3 rounded-lg border border-error/20">
                       <div className="flex items-center gap-1.5 font-semibold">
                         <span className="material-symbols-outlined text-[16px]">error</span>
-                        <span>Error en el Backend / Parser:</span>
+                        <span>Backend / Parser Error:</span>
                       </div>
                       <p className="text-[11px] text-on-surface break-words mt-1">{result?.error}</p>
                     </div>
@@ -510,7 +510,7 @@ export default function RightTelemetryPanel({
                               : 'text-on-surface-variant hover:text-on-surface'
                           }`}
                         >
-                          Topología Global
+                          Global Topology
                         </button>
                         <button
                           type="button"
@@ -521,7 +521,7 @@ export default function RightTelemetryPanel({
                               : 'text-on-surface-variant hover:text-on-surface'
                           }`}
                         >
-                          Nodos ({features?.nodes?.length || 0})
+                          Nodes ({features?.nodes?.length || 0})
                         </button>
                         <button
                           type="button"
@@ -532,7 +532,7 @@ export default function RightTelemetryPanel({
                               : 'text-on-surface-variant hover:text-on-surface'
                           }`}
                         >
-                          Aristas ({features?.edges?.length || 0})
+                          Edges ({features?.edges?.length || 0})
                         </button>
                         <button
                           type="button"
@@ -551,7 +551,7 @@ export default function RightTelemetryPanel({
                       {featureSubTab === 'global' && (
                         <div className="bg-surface-container-low/60 p-2.5 rounded-lg border border-outline-variant/40 space-y-2">
                           <span className="text-[10px] text-outline uppercase font-semibold font-sans block">
-                            Topología Global del Grafo (G) &amp; Ising
+                            Global Graph Topology (G) &amp; Ising
                           </span>
 
                           <div className="grid grid-cols-2 gap-2 text-[11px]">
@@ -563,41 +563,41 @@ export default function RightTelemetryPanel({
                             </div>
 
                             <div className="bg-surface-container-lowest p-2 rounded border border-outline-variant/30">
-                              <span className="text-outline text-[10px] block">Interacciones (|E|):</span>
+                              <span className="text-outline text-[10px] block">Interactions (|E|):</span>
                               <span className="font-bold text-on-surface">
-                                {features?.global?.num_interactions_E ?? 0} enlaces
+                                {features?.global?.num_interactions_E ?? 0} edges
                               </span>
                             </div>
 
                             <div className="bg-surface-container-lowest p-2 rounded border border-outline-variant/30">
-                              <span className="text-outline text-[10px] block">Gap Espectral (λ₂):</span>
+                              <span className="text-outline text-[10px] block">Spectral Gap (λ₂):</span>
                               <span className="font-bold text-secondary">
                                 {features?.global?.laplacian_spectral_gap_lambda2 ?? 0}
                               </span>
-                              <span className="text-[9px] text-outline block">Propagación cuántica</span>
+                              <span className="text-[9px] text-outline block">Quantum propagation</span>
                             </div>
 
                             <div className="bg-surface-container-lowest p-2 rounded border border-outline-variant/30">
-                              <span className="text-outline text-[10px] block">Radio Espectral (λ_max):</span>
+                              <span className="text-outline text-[10px] block">Spectral Radius (λ_max):</span>
                               <span className="font-bold text-on-surface">
                                 {features?.global?.laplacian_spectral_radius ?? 0}
                               </span>
                             </div>
 
                             <div className="bg-surface-container-lowest p-2 rounded border border-outline-variant/30">
-                              <span className="text-outline text-[10px] block">Densidad (|E|/|V|):</span>
+                              <span className="text-outline text-[10px] block">Density (|E|/|V|):</span>
                               <span className="font-bold text-on-surface">
                                 {features?.global?.clause_variable_ratio ?? 0}
                               </span>
                             </div>
 
                             <div className="bg-surface-container-lowest p-2 rounded border border-outline-variant/30">
-                              <span className="text-outline text-[10px] block">Balance Frustración:</span>
+                              <span className="text-outline text-[10px] block">Frustration Balance:</span>
                               <span className="font-bold text-tertiary">
                                 {Math.round((features?.global?.global_frustration_index || 0) * 100)}%
                               </span>
                               <span className="text-[9px] text-outline block">
-                                Autovalor extremal L_signed
+                                Extremal eigenvalue L_signed
                               </span>
                             </div>
                           </div>
@@ -605,13 +605,13 @@ export default function RightTelemetryPanel({
                           {/* Statistics h_i and J_ij */}
                           <div className="bg-surface-container-lowest p-2 rounded border border-outline-variant/30 text-[10px] space-y-1">
                             <div className="flex justify-between">
-                              <span className="text-outline">Coefs. Lineales h_i:</span>
+                              <span className="text-outline">Linear Coefs h_i:</span>
                               <span className="text-on-surface">
                                 μ={features?.global?.h_statistics?.mean ?? 0}, σ²={features?.global?.h_statistics?.variance ?? 0}
                               </span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-outline">Acoplamientos J_ij:</span>
+                              <span className="text-outline">Couplings J_ij:</span>
                               <span className="text-on-surface">
                                 μ={features?.global?.J_statistics?.mean ?? 0}, σ²={features?.global?.J_statistics?.variance ?? 0}
                               </span>
@@ -628,9 +628,9 @@ export default function RightTelemetryPanel({
                               <tr className="border-b border-outline-variant/40 text-outline">
                                 <th className="pb-1 font-semibold">Variable</th>
                                 <th className="pb-1 font-semibold">h_i</th>
-                                <th className="pb-1 font-semibold">Grado d_i</th>
+                                <th className="pb-1 font-semibold">Degree d_i</th>
                                 <th className="pb-1 font-semibold">Clustering</th>
-                                <th className="pb-1 font-semibold">Penalización</th>
+                                <th className="pb-1 font-semibold">Penalty</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-outline-variant/20">
@@ -641,7 +641,7 @@ export default function RightTelemetryPanel({
                                   <td className="py-1">{n.degree}</td>
                                   <td className="py-1">
                                     {n.clustering_coefficient === 'GNN' ? (
-                                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary-container/60 text-primary font-medium" title="Omitido en preprocesamiento; aprendido por capas GNN">
+                                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary-container/60 text-primary font-medium" title="Omitted in preprocessing; learned by GNN layers">
                                         GNN
                                       </span>
                                     ) : (
@@ -663,10 +663,10 @@ export default function RightTelemetryPanel({
                             <table className="w-full text-left text-[10px]">
                               <thead>
                                 <tr className="border-b border-outline-variant/40 text-outline">
-                                  <th className="pb-1 font-semibold">Arista (u, v)</th>
+                                  <th className="pb-1 font-semibold">Edge (u, v)</th>
                                   <th className="pb-1 font-semibold">J_ij</th>
-                                  <th className="pb-1 font-semibold">Tipo</th>
-                                  <th className="pb-1 font-semibold">Frustración</th>
+                                  <th className="pb-1 font-semibold">Type</th>
+                                  <th className="pb-1 font-semibold">Frustration</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-outline-variant/20">
@@ -692,7 +692,7 @@ export default function RightTelemetryPanel({
                             </table>
                           ) : (
                             <span className="text-outline text-[11px] p-2 block text-center">
-                              No hay acoplamientos cuadráticos en el Hamiltoniano.
+                              No quadratic couplings in the Hamiltonian.
                             </span>
                           )}
                         </div>
@@ -719,7 +719,7 @@ export default function RightTelemetryPanel({
                 <div className="mt-4 pt-2 border-t border-outline-variant/30 flex items-center justify-between text-outline text-[11px]">
                   <span>FastAPI • /api/solve</span>
                   <span className={hasRun && isSuccess ? 'text-secondary font-medium' : ''}>
-                    {hasRun && isSuccess ? 'QAOA finalizado' : 'Modo escucha'}
+                    {hasRun && isSuccess ? 'QAOA completed' : 'Listening'}
                   </span>
                 </div>
               </div>
@@ -735,32 +735,32 @@ export default function RightTelemetryPanel({
                   />
                 </div>
                 <div className="mt-2 text-center text-[11px] text-outline font-mono">
-                  Arrastra para rotar la topología tridimensional
+                  Drag to rotate the 3D topology
                 </div>
               </div>
             )}
 
 
-            {/* ================= TAB 4: HIPERPARÁMETROS QAOA ================= */}
+            {/* ================= TAB 4: QAOA HYPERPARAMETERS ================= */}
             {currentTab === 'params' && (
               <div className="flex flex-col gap-3 pt-0.5">
                 {/* Header Sub-bar */}
                 <div className="flex items-center justify-between pb-1 border-b border-outline-variant/30">
-                  <span className="text-xs font-semibold text-on-surface">Configuración QAOA</span>
+                  <span className="text-xs font-semibold text-on-surface">QAOA Configuration</span>
                   <div className="flex items-center gap-1.5">
                     <span className="bg-primary/10 text-primary text-[10px] font-medium px-2 py-0.5 rounded-full">
-                      Opcional
+                      Optional
                     </span>
-                    <span className="text-[10px] text-outline">Valores activos</span>
+                    <span className="text-[10px] text-outline">Active values</span>
                   </div>
                 </div>
 
-                {/* Row 1: Capas p-steps & Disparos */}
+                {/* Row 1: p-steps Layers & Shots */}
                 <div className="grid grid-cols-2 gap-2.5">
-                  {/* Capas p-steps */}
+                  {/* p-steps Layers */}
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center justify-between">
-                      <label className="text-[11px] font-medium text-on-surface">Capas p-steps</label>
+                      <label className="text-[11px] font-medium text-on-surface">p-step Layers</label>
                       <span className="text-[10px] font-mono text-outline">
                         p = {hyperparams?.pSteps || 2}
                       </span>
@@ -775,7 +775,7 @@ export default function RightTelemetryPanel({
                           })
                         }
                         className="w-6 h-6 flex items-center justify-center text-on-surface-variant hover:text-on-surface font-bold text-xs cursor-pointer hover:bg-surface-container-lowest rounded-md transition-colors select-none"
-                        title="Reducir capas"
+                        title="Decrease layers"
                       >
                         -
                       </button>
@@ -791,16 +791,16 @@ export default function RightTelemetryPanel({
                           })
                         }
                         className="w-6 h-6 flex items-center justify-center text-on-surface-variant hover:text-on-surface font-bold text-xs cursor-pointer hover:bg-surface-container-lowest rounded-md transition-colors select-none"
-                        title="Aumentar capas"
+                        title="Increase layers"
                       >
                         +
                       </button>
                     </div>
                   </div>
 
-                  {/* Disparos (Shots) */}
+                  {/* Shots */}
                   <div className="flex flex-col gap-1">
-                    <label className="text-[11px] font-medium text-on-surface">Disparos (Shots)</label>
+                    <label className="text-[11px] font-medium text-on-surface">Shots</label>
                     <div className="relative">
                       <select
                         value={hyperparams?.shots || 8192}
@@ -824,14 +824,14 @@ export default function RightTelemetryPanel({
                   </div>
                 </div>
 
-                {/* Row: Backend Cuántico (Qiskit / Qollab) */}
+                {/* Row: Quantum Backend (Qiskit / Qollab) */}
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center justify-between">
                     <label className="text-[11px] font-medium text-on-surface">
-                      Backend Cuántico (Qiskit / Qollab)
+                      Quantum Backend (Qiskit / Qollab)
                     </label>
                     <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-primary/10 text-primary font-medium">
-                      Hackatón Qollab
+                      Qollab Hackathon
                     </span>
                   </div>
                   <div className="relative">
@@ -845,21 +845,21 @@ export default function RightTelemetryPanel({
                       }
                       className="w-full bg-surface-container-lowest border border-outline-variant/60 hover:border-primary/60 focus:border-primary rounded-lg px-2.5 py-1 text-on-surface font-mono text-xs appearance-none focus:outline-none focus:ring-1 focus:ring-primary/20 cursor-pointer pr-7 shadow-sm transition-colors"
                     >
-                      <option value="aer_simulator">Qiskit AerSimulator (Local Óptimo)</option>
-                      <option value="ionq_simulator">Qollab / IonQ Simulator (Cloud / Emulado)</option>
-                      <option value="ionq_qpu">Qollab / IonQ QPU (Físico / Emulado)</option>
+                      <option value="aer_simulator">Qiskit AerSimulator (Local Optimal)</option>
+                      <option value="ionq_simulator">Qollab / IonQ Simulator (Cloud / Emulated)</option>
+                      <option value="ionq_qpu">Qollab / IonQ QPU (Physical / Emulated)</option>
                     </select>
                     <span className="material-symbols-outlined text-[16px] text-primary pointer-events-none absolute right-2 top-1/2 -translate-y-1/2">
                       unfold_more
                     </span>
                   </div>
 
-                  {/* Campo opcional de API Key cuando se selecciona Qollab / IonQ */}
+                  {/* Optional API Key field when Qollab / IonQ is selected */}
                   {(hyperparams?.backend === 'ionq_simulator' || hyperparams?.backend === 'ionq_qpu') && (
                     <div className="flex flex-col gap-0.5 pt-0.5">
                       <div className="flex items-center justify-between text-[10px] font-mono text-outline">
-                        <span>API Key Qollab / IonQ (Opcional)</span>
-                        <span className="text-[9px] opacity-75">o variable de entorno</span>
+                        <span>Qollab / IonQ API Key (Optional)</span>
+                        <span className="text-[9px] opacity-75">or environment variable</span>
                       </div>
                       <div className="flex items-center bg-surface-container-lowest rounded-lg px-2 py-1 border border-outline-variant/60 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 shadow-sm">
                         <input
@@ -876,16 +876,16 @@ export default function RightTelemetryPanel({
                             })
                           }
                           className="w-full bg-transparent font-mono text-xs text-on-surface focus:outline-none"
-                          placeholder="Token de acceso (vacío = emulación nativa)"
+                          placeholder="Access token (empty = native emulation)"
                         />
                       </div>
                     </div>
                   )}
                 </div>
 
-                {/* Row 2: Optimizador Clásico */}
+                {/* Row 2: Classical Optimizer */}
                 <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-medium text-on-surface">Optimizador Clásico</label>
+                  <label className="text-[11px] font-medium text-on-surface">Classical Optimizer</label>
                   <div className="grid grid-cols-3 gap-1 bg-surface-container-low p-1 rounded-lg border border-outline-variant/50">
                     {['COBYLA', 'Adam', 'Nelder-Mead'].map((opt) => {
                       const isSelected = (hyperparams?.optimizer || 'COBYLA') === opt;
@@ -907,21 +907,21 @@ export default function RightTelemetryPanel({
                   </div>
                 </div>
 
-                  {/* Row 3: Inicialización de Ángulos */}
+                  {/* Row 3: Angle Initialization */}
                   <div className="flex flex-col gap-1.5">
                     <div className="flex items-center justify-between">
                       <label className="text-[11px] font-medium text-on-surface">
-                        Inicialización de Ángulos [γ₀, β₀]
+                        Angle Initialization [γ₀, β₀]
                       </label>
                       <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-tertiary/10 text-tertiary font-semibold flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse" />
-                        PINN Activa
+                        PINN Active
                       </span>
                     </div>
 
                     <div className="grid grid-cols-3 gap-1 bg-surface-container-low p-1 rounded-lg border border-outline-variant/50">
-                      {['Automática', 'Heurística', 'Manual'].map((mode) => {
-                        const isSelected = (hyperparams?.angleInit || 'Automática') === mode;
+                      {['Automatic', 'Heuristic', 'Manual'].map((mode) => {
+                        const isSelected = (hyperparams?.angleInit || 'Automatic') === mode;
                         return (
                           <button
                             key={mode}
@@ -939,21 +939,21 @@ export default function RightTelemetryPanel({
                       })}
                     </div>
 
-                    {/* PINN Informative Capsule for Automática */}
-                    {hyperparams?.angleInit === 'Automática' && (
+                    {/* PINN Informative Capsule for Automatic */}
+                    {hyperparams?.angleInit === 'Automatic' && (
                       <div className="p-2.5 rounded-xl bg-surface-container-low/70 border border-tertiary/30 shadow-sm flex flex-col gap-1.5 mt-0.5">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-1.5">
                             <span className="material-symbols-outlined text-[16px] text-tertiary">neurology</span>
-                            <span className="text-[11px] font-bold text-on-surface">Selección Guiada por PINN</span>
+                            <span className="text-[11px] font-bold text-on-surface">PINN-Guided Selection</span>
                           </div>
                           <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-tertiary/15 text-tertiary font-semibold">
-                            Red de 17 Features
+                            17-Feature Network
                           </span>
                         </div>
 
                         <p className="text-[10px] text-on-surface-variant leading-relaxed">
-                          Los ángulos óptimos de partida <strong className="text-tertiary font-mono">[γ₀, β₀]</strong> y la telemetría cuántica se calculan automáticamente mediante la <strong>Red Neuronal Informada por la Física (PINN)</strong>, evaluando en tiempo real el gap espectral Laplaciano (λ₂), el radio espectral y el índice de frustración cuántica para mitigar Barren Plateaus.
+                          Optimal starting angles <strong className="text-tertiary font-mono">[γ₀, β₀]</strong> and quantum telemetry are automatically computed by the <strong>Physics-Informed Neural Network (PINN)</strong>, evaluating in real-time the Laplacian spectral gap (λ₂), spectral radius, and quantum frustration index to mitigate Barren Plateaus.
                         </p>
                       </div>
                     )}

@@ -9,12 +9,12 @@ import CircuitComposerStage from './CircuitComposerStage.jsx';
 import ShotStreamStage from './ShotStreamStage.jsx';
 
 const STAGES = [
-  { id: 'parser', name: '1. Parser MiniZinc', icon: 'code', component: CodeParserStage, duration: 6500 },
-  { id: 'graph', name: '2. Grafo & QUBO', icon: 'hub', component: GraphQuboStage, duration: 7000 },
-  { id: 'features', name: '3. Features Espectrales', icon: 'analytics', component: FeaturesStage, duration: 6500 },
-  { id: 'pinn', name: '4. Red PINN', icon: 'neurology', component: PinnStage, duration: 7500 },
+  { id: 'parser', name: '1. MiniZinc Parser', icon: 'code', component: CodeParserStage, duration: 6500 },
+  { id: 'graph', name: '2. Graph & QUBO', icon: 'hub', component: GraphQuboStage, duration: 7000 },
+  { id: 'features', name: '3. Spectral Features', icon: 'analytics', component: FeaturesStage, duration: 6500 },
+  { id: 'pinn', name: '4. PINN Network', icon: 'neurology', component: PinnStage, duration: 7500 },
   { id: 'circuit', name: '5. QAOA Composer', icon: 'memory', component: CircuitComposerStage, duration: 7000 },
-  { id: 'shots', name: '6. Shots & Solución', icon: 'emoji_events', component: ShotStreamStage, duration: 0 },
+  { id: 'shots', name: '6. Shots & Solution', icon: 'emoji_events', component: ShotStreamStage, duration: 0 },
 ];
 
 export default function PipelineModal({
@@ -33,25 +33,32 @@ export default function PipelineModal({
   const [speed, setSpeed] = useState(1.0);
   const [autoAdvance, setAutoAdvance] = useState(true);
 
-  // Al abrir, si se solicita una etapa específica (ej. 'pinn'), posicionarse directamente en ella
+  // When opening, always reset to playing state from step 0 (or the requested stage)
+  // This ensures that paused state does NOT persist across modal open/close cycles
   useEffect(() => {
-    if (isOpen && initialStageId) {
-      const targetIdx = STAGES.findIndex((s) => s.id === initialStageId);
-      if (targetIdx !== -1) {
-        setCurrentStep(targetIdx);
+    if (isOpen) {
+      if (initialStageId) {
+        const targetIdx = STAGES.findIndex((s) => s.id === initialStageId);
+        if (targetIdx !== -1) {
+          setCurrentStep(targetIdx);
+        } else {
+          setCurrentStep(0);
+        }
+      } else {
+        setCurrentStep(0);
       }
-    } else if (isOpen && !initialStageId) {
-      setCurrentStep(0);
+      // Always reset to playing when opening
+      setIsPlaying(true);
     }
   }, [isOpen, initialStageId]);
 
-  // Adapta los datos reales de ejecución del backend para todas las pestañas
+  // Adapt real backend execution data for all tabs
   const pipelineData = useMemo(() => {
     return adaptBackendDataToPipeline(result, initialCode, hyperparams);
   }, [result, initialCode, hyperparams]);
 
-  // Auto-avance secuencial para etapas 1 a 5.
-  // La etapa 6 (shots) NO se corta artificialmente por tiempo; se completa cuando terminan los 1024 disparos.
+  // Sequential auto-advance for stages 1 to 5.
+  // Stage 6 (shots) does NOT get cut artificially by time; it completes when all 1024 shots are done.
   useEffect(() => {
     if (!isOpen || !isPlaying || !autoAdvance) return;
     if (currentStep >= STAGES.length - 1) return;
@@ -89,14 +96,14 @@ export default function PipelineModal({
   };
 
   const handlePopout = () => {
-    // Abrir una nueva pestaña para el visualizador si el usuario lo desea
+    // Open a new tab for the visualizer if the user wants
     window.open('/pipeline.html', '_blank', 'width=1280,height=800');
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-2 sm:p-4 select-none animate-in fade-in duration-200">
       <div className="w-full h-full max-w-[1440px] max-h-[920px] bg-[#060913] rounded-3xl border border-cyan-500/40 shadow-[0_0_50px_rgba(0,242,254,0.2)] flex flex-col overflow-hidden relative">
-        {/* Barra Superior de Control y Navegación de Etapas */}
+        {/* Top Control Bar and Stage Navigation */}
         <header className="px-5 py-3.5 bg-slate-900/90 border-b border-cyan-500/20 flex flex-wrap items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
@@ -108,12 +115,12 @@ export default function PipelineModal({
             {isLoading ? (
               <span className="hidden sm:inline-flex items-center gap-1.5 font-mono text-[10px] bg-cyan-950/80 border border-cyan-400 text-cyan-300 px-2.5 py-0.5 rounded-full animate-pulse">
                 <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
-                <span>Simulación QAOA en Ejecución...</span>
+                <span>QAOA Simulation Running...</span>
               </span>
             ) : result?.success ? (
               <span className="hidden sm:inline-flex items-center gap-1.5 font-mono text-[10px] bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 px-2.5 py-0.5 rounded-full">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                <span>Backend Real Conectado ({pipelineData.circuit?.qubitsCount || 4} Qubits | {result.details?.hardware || 'Qiskit Aer'})</span>
+                <span>Real Backend Connected ({pipelineData.circuit?.qubitsCount || 4} Qubits | {result.details?.hardware || 'Qiskit Aer'})</span>
               </span>
             ) : (
               <span className="hidden sm:inline-block font-mono text-[10px] bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 px-2 py-0.5 rounded-full">
@@ -122,7 +129,7 @@ export default function PipelineModal({
             )}
           </div>
 
-          {/* Stepper de Etapas Cuánticas */}
+          {/* Quantum Stage Stepper */}
           <div className="flex items-center gap-1 bg-black/60 p-1 rounded-xl border border-white/10 overflow-x-auto max-w-full">
             {STAGES.map((stg, idx) => {
               const isActive = idx === currentStep;
@@ -149,28 +156,28 @@ export default function PipelineModal({
             })}
           </div>
 
-          {/* Botones de Ventana */}
+          {/* Window Buttons */}
           <div className="flex items-center gap-2">
             <button
               onClick={handlePopout}
               className="p-1.5 rounded-lg bg-white/5 hover:bg-cyan-500/20 border border-white/10 hover:border-cyan-400 text-slate-300 hover:text-white transition-all text-xs flex items-center gap-1"
-              title="Abrir en ventana independiente"
+              title="Open in separate window"
             >
               <span className="material-symbols-outlined text-[16px]">open_in_new</span>
-              <span className="hidden md:inline font-mono text-[11px]">Nueva Ventana</span>
+              <span className="hidden md:inline font-mono text-[11px]">New Window</span>
             </button>
 
             <button
               onClick={onClose}
               className="w-8 h-8 rounded-lg bg-red-950/40 hover:bg-red-500/30 border border-red-500/30 text-red-300 hover:text-white flex items-center justify-center transition-all cursor-pointer font-bold"
-              title="Cerrar Visualizador"
+              title="Close Visualizer"
             >
               ✕
             </button>
           </div>
         </header>
 
-        {/* Área Central: Visualizador de la Etapa Activa */}
+        {/* Central Area: Active Stage Visualizer */}
         <main className="flex-1 min-h-0 w-full overflow-hidden relative">
           <ActiveStageComponent
             data={pipelineData}
@@ -180,41 +187,41 @@ export default function PipelineModal({
           />
         </main>
 
-        {/* Barra Inferior de Control de Reproducción */}
+        {/* Bottom Playback Control Bar */}
         <footer className="px-5 py-2.5 bg-slate-900/90 border-t border-cyan-500/20 flex flex-wrap items-center justify-between gap-3 shrink-0">
-          {/* Controles de Reproducción y Etapas */}
+          {/* Playback and Stage Controls */}
           <div className="flex items-center gap-2 font-mono text-xs">
-            {/* Paso Anterior */}
+            {/* Previous Step */}
             <button
               onClick={() => setCurrentStep((prev) => Math.max(0, prev - 1))}
               disabled={currentStep === 0}
               className="px-2.5 py-1 bg-white/5 hover:bg-cyan-500/20 border border-white/10 text-white rounded-lg transition-all disabled:opacity-40 cursor-pointer"
             >
-              ⏮ Anterior
+              ⏮ Previous
             </button>
 
-            {/* Play / Pausa */}
+            {/* Play / Pause */}
             <button
               onClick={() => setIsPlaying(!isPlaying)}
               className="px-3.5 py-1 bg-gradient-to-r from-sky-600 to-blue-700 hover:from-sky-500 hover:to-blue-600 border border-cyan-400 text-white rounded-lg font-semibold transition-all shadow-md cursor-pointer"
             >
-              {isPlaying ? '⏸ Pausar' : '▶ Reanudar'}
+              {isPlaying ? '⏸ Pause' : '▶ Resume'}
             </button>
 
-            {/* Siguiente Paso */}
+            {/* Next Step */}
             <button
               onClick={() => setCurrentStep((prev) => Math.min(STAGES.length - 1, prev + 1))}
               disabled={currentStep === STAGES.length - 1}
               className="px-2.5 py-1 bg-white/5 hover:bg-cyan-500/20 border border-white/10 text-white rounded-lg transition-all disabled:opacity-40 cursor-pointer"
             >
-              Siguiente ⏭
+              Next ⏭
             </button>
 
-            {/* Reiniciar */}
+            {/* Restart */}
             <button
               onClick={handleRestart}
               className="p-1 bg-white/5 hover:bg-cyan-500/20 border border-white/10 text-cyan-300 hover:text-white rounded-lg transition-all cursor-pointer"
-              title="Reiniciar flujo desde el Paso 1"
+              title="Restart flow from Step 1"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
@@ -223,14 +230,14 @@ export default function PipelineModal({
             </button>
           </div>
 
-          {/* Información del Paso Actual */}
+          {/* Current Step Info */}
           <div className="font-mono text-xs text-slate-300">
-            ETAPA:{' '}
+            STAGE:{' '}
             <span className="text-cyan-400 font-bold">{currentStep + 1} / {STAGES.length}</span> —{' '}
             <span className="text-white font-semibold">{STAGES[currentStep].name}</span>
           </div>
 
-          {/* Selector de Velocidad y Auto-avance */}
+          {/* Speed Selector and Auto-advance */}
           <div className="flex items-center gap-3">
             <label className="flex items-center gap-1.5 font-mono text-[11px] text-slate-400 cursor-pointer select-none">
               <input
@@ -239,7 +246,7 @@ export default function PipelineModal({
                 onChange={(e) => setAutoAdvance(e.target.checked)}
                 className="rounded accent-cyan-400 cursor-pointer"
               />
-              <span>Auto-avance</span>
+              <span>Auto-advance</span>
             </label>
 
             <div className="flex bg-black/40 rounded-lg p-0.5 border border-white/10 font-mono text-[10px]">

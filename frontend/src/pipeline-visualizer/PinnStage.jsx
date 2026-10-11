@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-// Arquitectura real de QaoaPINN: 17 features espectrales -> ResBlock 1 (128) -> ResBlock 2 (64) -> 6 salidas (ángulos + telemetría)
+// Real QaoaPINN architecture: 17 spectral features -> ResBlock 1 (128) -> ResBlock 2 (64) -> 6 outputs (angles + telemetry)
 const PINN_LAYERS = [17, 12, 8, 6];
 
 export default function PinnStage({ data, isPlaying, speed = 1.0, onComplete }) {
@@ -23,7 +23,7 @@ export default function PinnStage({ data, isPlaying, speed = 1.0, onComplete }) 
     const width = canvas.width;
     const height = canvas.height;
 
-    // Calcular coordenadas fijas de cada nodo
+    // Compute fixed coordinates for each node
     const layerCoords = [];
     const layerGap = width / (PINN_LAYERS.length + 0.6);
 
@@ -39,7 +39,7 @@ export default function PinnStage({ data, isPlaying, speed = 1.0, onComplete }) 
       layerCoords.push(nodes);
     });
 
-    // Partículas continuas de datos
+    // Continuous data particles
     const particles = [];
     for (let i = 0; i < 36; i++) {
       particles.push({
@@ -54,11 +54,11 @@ export default function PinnStage({ data, isPlaying, speed = 1.0, onComplete }) 
     const render = () => {
       ctx.clearRect(0, 0, width, height);
 
-      // Fondo sutil con cuadrícula tecnológica
+      // Subtle background with tech grid
       ctx.strokeStyle = 'rgba(15, 23, 42, 0.4)';
       ctx.lineWidth = 1;
 
-      // 1. Dibujar Sinapsis (Líneas de conexión entre capas)
+      // 1. Draw Synapses (Connection lines between layers)
       for (let l = 0; l < layerCoords.length - 1; l++) {
         const fromNodes = layerCoords[l];
         const toNodes = layerCoords[l + 1];
@@ -75,7 +75,7 @@ export default function PinnStage({ data, isPlaying, speed = 1.0, onComplete }) 
         });
       }
 
-      // 2. Animar propagación principal Feed-Forward
+      // 2. Animate main Feed-Forward propagation
       if (isPlaying) {
         pulseProgress = (pulseProgress + 0.006 * speed) % 1.0;
         const currentActiveLayer = Math.min(
@@ -88,23 +88,23 @@ export default function PinnStage({ data, isPlaying, speed = 1.0, onComplete }) 
           setActiveLayerIndex(currentActiveLayer);
           if (layerTextRef.current) {
             const names = [
-              "17 Features Espectrales (Entrada)",
+              "17 Spectral Features (Input)",
               "ResBlock 1 + BatchNorm (128)",
               "ResBlock 2 + Dropout (64)",
-              "Ángulos Óptimos (γ, β) + Telemetría"
+              "Optimal Angles (γ, β) + Telemetry"
             ];
             layerTextRef.current.textContent = names[currentActiveLayer] || "";
           }
         }
 
-        // Actualizar pérdida física sin provocar re-renders de React
+        // Update physics loss without triggering React re-renders
         if (lossTextRef.current) {
           const simulatedLoss = pinn.lossPhysics * (1.12 - pulseProgress * 0.12);
-          lossTextRef.current.textContent = `Pérdida Física: ℒ = ${simulatedLoss.toFixed(4)}`;
+          lossTextRef.current.textContent = `Physics Loss: ℒ = ${simulatedLoss.toFixed(4)}`;
         }
       }
 
-      // 3. Dibujar Partículas de Energía viajando por las sinapsis
+      // 3. Draw Energy Particles traveling through synapses
       particles.forEach((p) => {
         if (isPlaying) {
           p.t += p.speed * speed;
@@ -133,14 +133,14 @@ export default function PinnStage({ data, isPlaying, speed = 1.0, onComplete }) 
         }
       });
 
-      // 4. Dibujar Nodos de las Capas
+      // 4. Draw Layer Nodes
       layerCoords.forEach((layer, lIdx) => {
         const isInput = lIdx === 0;
         const isOutput = lIdx === layerCoords.length - 1;
         const isReached = lIdx <= lastReportedLayer;
 
         layer.forEach((node, nIdx) => {
-          // Halo de energía del nodo si está activo
+          // Node energy halo if active
           if (isReached) {
             ctx.beginPath();
             ctx.arc(node.x, node.y, isOutput ? 14 : 11, 0, Math.PI * 2);
@@ -152,7 +152,7 @@ export default function PinnStage({ data, isPlaying, speed = 1.0, onComplete }) 
             ctx.fill();
           }
 
-          // Cuerpo del nodo
+          // Node body
           ctx.beginPath();
           ctx.arc(node.x, node.y, isOutput ? 8 : 6, 0, Math.PI * 2);
 
@@ -176,11 +176,11 @@ export default function PinnStage({ data, isPlaying, speed = 1.0, onComplete }) 
           ctx.shadowBlur = 0;
         });
 
-        // Título de la capa en la parte superior del canvas
+        // Layer title at the top of the canvas
         ctx.fillStyle = isReached ? '#e2e8f0' : '#64748b';
         ctx.font = 'bold 11px monospace';
         ctx.textAlign = 'center';
-        const layerTitles = ["17 Features", "ResBlock 1", "ResBlock 2", "Salidas (γ, β)"];
+        const layerTitles = ["17 Features", "ResBlock 1", "ResBlock 2", "Outputs (γ, β)"];
         ctx.fillText(layerTitles[lIdx], layer[0].x, 22);
       });
 
@@ -196,24 +196,24 @@ export default function PinnStage({ data, isPlaying, speed = 1.0, onComplete }) 
 
   return (
     <div className="w-full h-full flex flex-col lg:flex-row gap-4 p-4 text-white overflow-hidden select-none">
-      {/* Columna Izquierda: Red Neuronal Visual con Propagación Activa */}
+      {/* Left Column: Visual Neural Network with Active Propagation */}
       <div className="flex-1 flex flex-col bg-[#070b16] rounded-2xl border border-cyan-500/30 shadow-[0_0_20px_rgba(0,242,254,0.12)] p-4 relative overflow-hidden">
         <div className="flex items-center justify-between pb-2 border-b border-cyan-500/20">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#38bdf8]" />
             <span className="font-mono text-xs font-bold text-cyan-300 tracking-wider uppercase">
-              4. Red Neuronal Informada por Física (PINN): Propagación Hacia Adelante
+              4. Physics-Informed Neural Network (PINN): Forward Propagation
             </span>
           </div>
           <span
             ref={lossTextRef}
             className="text-[10px] font-mono text-emerald-400 bg-emerald-950/40 px-2.5 py-0.5 rounded border border-emerald-500/30 font-semibold"
           >
-            Pérdida Física: ℒ = {pinn.lossPhysics.toFixed(4)}
+            Physics Loss: ℒ = {pinn.lossPhysics.toFixed(4)}
           </span>
         </div>
 
-        {/* Canvas de la Red Neuronal */}
+        {/* Neural Network Canvas */}
         <div className="flex-1 w-full relative min-h-[260px] flex items-center justify-center">
           <canvas
             ref={canvasRef}
@@ -225,26 +225,26 @@ export default function PinnStage({ data, isPlaying, speed = 1.0, onComplete }) 
 
         <div className="flex items-center justify-between text-[11px] font-mono bg-black/40 p-2 rounded-xl border border-white/5">
           <div className="flex items-center gap-2">
-            <span className="text-slate-400">Capa Activa:</span>
+            <span className="text-slate-400">Active Layer:</span>
             <span ref={layerTextRef} className="text-cyan-300 font-bold">
-              Features Físicas (Entrada)
+              Physical Features (Input)
             </span>
           </div>
-          <span className="text-amber-400 font-bold">Inferencia O(1) basada en el Hamiltoniano</span>
+          <span className="text-amber-400 font-bold">O(1) Hamiltonian-based Inference</span>
         </div>
       </div>
 
-      {/* Columna Derecha: Hiperparámetros de Salida Predichos */}
+      {/* Right Column: Predicted Output Hyperparameters */}
       <div className="w-full lg:w-[400px] flex flex-col gap-3">
-        {/* Panel de Hiperparámetros Óptimos Predichos */}
+        {/* Predicted Optimal Hyperparameters Panel */}
         <div className="bg-[#070b16] rounded-2xl border border-amber-500/30 p-3.5 shadow-lg flex-1 flex flex-col">
           <div className="flex items-center justify-between mb-2">
             <h4 className="font-mono text-xs font-bold text-amber-300 flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_6px_#ffea00]" />
-              Hiperparámetros QAOA Predichos por la PINN
+              QAOA Hyperparameters Predicted by PINN
             </h4>
             <span className="text-[10px] font-mono text-amber-400 bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-500/30">
-              p = 2 capas
+              p = 2 layers
             </span>
           </div>
 
@@ -257,7 +257,7 @@ export default function PinnStage({ data, isPlaying, speed = 1.0, onComplete }) 
                 <div>
                   <div className="text-xs font-bold text-white">{param.name}</div>
                   <div className="text-[10px] text-slate-400">
-                    {param.name.includes('γ') ? 'Ángulo Hamiltoniano Costo U_C' : 'Ángulo Hamiltoniano Mezclador U_M'}
+                    {param.name.includes('γ') ? 'Cost Hamiltonian Angle U_C' : 'Mixer Hamiltonian Angle U_M'}
                   </div>
                 </div>
                 <div className="text-xs font-bold text-amber-300 bg-black/50 px-2.5 py-1 rounded border border-amber-400/40 shadow-[0_0_8px_rgba(255,234,0,0.2)]">
@@ -269,16 +269,16 @@ export default function PinnStage({ data, isPlaying, speed = 1.0, onComplete }) 
 
           <div className="mt-auto pt-3 border-t border-white/10 font-mono text-[10px] text-slate-400 space-y-1.5">
             <div className="flex justify-between">
-              <span>Optimizador de Aprendizaje:</span>
+              <span>Learning Optimizer:</span>
               <span className="text-cyan-300">{pinn.optimizer}</span>
             </div>
             <div className="flex justify-between">
-              <span>Función de Pérdida PINN:</span>
+              <span>PINN Loss Function:</span>
               <span className="text-emerald-400">ℒ_data + λ_phys · ⟨ψ|H_C|ψ⟩</span>
             </div>
             <div className="flex justify-between">
-              <span>Garantía Teórica:</span>
-              <span className="text-amber-300">Evita mesetas estériles (Barren Plateaus)</span>
+              <span>Theoretical Guarantee:</span>
+              <span className="text-amber-300">Avoids Barren Plateaus</span>
             </div>
           </div>
         </div>

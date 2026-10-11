@@ -26,29 +26,29 @@ export default function ResultsPanel({ result, onBackToConfig, onRerun, isVisual
           <button
             onClick={onBackToConfig}
             className="btn-icon"
-            title="Volver a configuración de parámetros"
+            title="Back to parameter configuration"
           >
             <ArrowLeft size={13} />
           </button>
-          <span className="panel-title-text">Resultados de Simulación Cuántica</span>
+          <span className="panel-title-text">Quantum Simulation Results</span>
         </div>
 
         <div className="view-toggle-pills">
           <button
             onClick={() => setActiveTab('histogram')}
             className={`pill-btn ${activeTab === 'histogram' ? 'active' : ''}`}
-            title="Ver histograma de probabilidades"
+            title="View probability histogram"
           >
             <BarChart2 size={12} />
-            <span>Histograma</span>
+            <span>Histogram</span>
           </button>
           <button
             onClick={() => setActiveTab('3d')}
             className={`pill-btn ${activeTab === '3d' ? 'active' : ''}`}
-            title="Ver estado 3D interactivo"
+            title="View interactive 3D state"
           >
             <Box size={12} />
-            <span>Vista 3D</span>
+            <span>3D View</span>
           </button>
         </div>
       </div>
@@ -56,25 +56,25 @@ export default function ResultsPanel({ result, onBackToConfig, onRerun, isVisual
       {/* Metrics Row (Compact & Clean) */}
       <div className="results-metrics-grid">
         <div className="metric-card">
-          <span className="metric-label">Objetivo Óptimo</span>
+          <span className="metric-label">Optimal Objective</span>
           <span className="metric-val text-blue">{result?.optimalObjective || '152.0'}</span>
         </div>
 
         <div className="metric-card">
-          <span className="metric-label">⟨H_cost⟩ Valor Esperado</span>
+          <span className="metric-label">⟨H_cost⟩ Expected Value</span>
           <span className="metric-val text-muted">{result?.energy || '-152.000'}</span>
         </div>
 
         <div className="metric-card full-span">
           <div className="flex items-center justify-between w-full">
-            <span className="metric-label">Eigenestado Medido</span>
+            <span className="metric-label">Measured Eigenstate</span>
             <button
               onClick={handleCopyBitstring}
               className="btn-copy-mini"
-              title="Copiar cadena de bits"
+              title="Copy bitstring"
             >
               {copiedState ? <Check size={11} className="text-success" /> : <Copy size={11} />}
-              <span>{copiedState ? 'Copiado' : 'Copiar'}</span>
+              <span>{copiedState ? 'Copied' : 'Copy'}</span>
             </button>
           </div>
           <div className="eigenstate-display">
@@ -90,7 +90,7 @@ export default function ResultsPanel({ result, onBackToConfig, onRerun, isVisual
           <div className="histogram-wrapper">
             <div className="histogram-header">
               <span className="text-xs text-muted font-mono">
-                Distribución muestreada ({result?.shots || 8192} shots)
+                Sampled distribution ({result?.shots || 8192} shots)
               </span>
               <span className="text-xs text-blue font-mono font-semibold">
                 {hoveredState ? `|${hoveredState.bits}⟩: ${(hoveredState.prob * 100).toFixed(1)}%` : `P_max = ${result?.stateProbability || '28.4%'}`}
@@ -143,10 +143,10 @@ export default function ResultsPanel({ result, onBackToConfig, onRerun, isVisual
         <button
           onClick={onRerun}
           className="btn-rerun"
-          title="Ejecutar de nuevo con los parámetros actuales"
+          title="Run again with current parameters"
         >
           <RefreshCw size={12} />
-          <span>Re-ejecutar</span>
+          <span>Re-run</span>
         </button>
       </div>
     </div>

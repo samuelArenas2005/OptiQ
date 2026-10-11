@@ -50,7 +50,7 @@ export default function AtomLoader({ statusMessage, step = 1, totalSteps = 4 }) 
 
       <div className="flex flex-col items-center gap-2 max-w-xs text-center">
         <h4 className="font-headline-sm text-headline-sm text-on-surface">
-          {statusMessage || 'Ejecutando algoritmo QAOA...'}
+          {statusMessage || 'Running QAOA algorithm...'}
         </h4>
         <div className="w-44 h-1.5 bg-surface-container rounded-full overflow-hidden">
           <div
@@ -59,7 +59,7 @@ export default function AtomLoader({ statusMessage, step = 1, totalSteps = 4 }) 
           />
         </div>
         <span className="font-code-sm text-code-sm text-on-surface-variant">
-          Paso {step} de {totalSteps} • Despacho cuántico
+          Step {step} of {totalSteps} • Quantum dispatch
         </span>
       </div>
     </div>

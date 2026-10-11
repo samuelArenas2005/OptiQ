@@ -116,16 +116,16 @@ export default function BarChartVisualizer3D({ customData = null }) {
             <button
               onClick={handleTogglePlay}
               className="px-3 py-1 bg-gradient-to-r from-sky-600 to-blue-700 hover:from-sky-500 hover:to-blue-600 border border-cyan-400 text-white rounded-lg text-xs font-semibold transition-all flex items-center gap-1 shadow-md cursor-pointer active:scale-95 whitespace-nowrap"
-              title="Pausar / Reanudar"
+              title="Pause / Resume"
             >
-              {isPlaying ? '⏸ Pausar' : '▶ Reanudar'}
+              {isPlaying ? '⏸ Pause' : '▶ Resume'}
             </button>
 
-            {/* Botón de Reload para volver al Shot 1 */}
+            {/* Reload button to return to Shot 1 */}
             <button
               onClick={handleReload}
               className="p-1.5 bg-white/5 hover:bg-cyan-500/25 border border-white/10 hover:border-cyan-400 text-cyan-300 hover:text-white rounded-lg transition-all flex items-center justify-center cursor-pointer active:scale-90"
-              title="Reiniciar simulación al Shot 1"
+              title="Restart simulation at Shot 1"
             >
               <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
@@ -150,7 +150,7 @@ export default function BarChartVisualizer3D({ customData = null }) {
           </div>
 
           <div className="text-[9px] font-mono text-slate-400 text-center opacity-70">
-            🖱️ Arrastrar: Rotar cámara • Rueda: Zoom • Clic derecho: Desplazar
+            🖱️ Drag: Rotate camera • Scroll: Zoom • Right click: Pan
           </div>
         </div>
       </div>

@@ -187,8 +187,8 @@ export default function Visualizer3D({ qubits = 10, bitstring = '1101000011' }) 
   return (
     <div className="visualizer-3d-wrapper">
       <div className="visualizer-3d-toolbar">
-        <span className="text-xs font-mono text-muted">Visualización Cuántica 3D (Hamiltoniano)</span>
-        <span className="text-xs font-mono text-cyan">Interactivo (Arrastra para rotar)</span>
+        <span className="text-xs font-mono text-muted">3D Quantum Visualization (Hamiltonian)</span>
+        <span className="text-xs font-mono text-cyan">Interactive (Drag to rotate)</span>
       </div>
       <div ref={mountRef} className="visualizer-3d-canvas" />
     </div>

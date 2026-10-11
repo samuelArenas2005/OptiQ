@@ -17,14 +17,14 @@ export default function Console({ logs = [], onClear }) {
           <button
             onClick={onClear}
             className="btn-icon-tiny"
-            title="Limpiar consola"
+            title="Clear console"
           >
             <Trash2 size={11} />
           </button>
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
             className="btn-icon-tiny"
-            title={isCollapsed ? 'Expandir consola' : 'Minimizar consola'}
+            title={isCollapsed ? 'Expand console' : 'Minimize console'}
           >
             {isCollapsed ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
           </button>
@@ -34,13 +34,12 @@ export default function Console({ logs = [], onClear }) {
       {!isCollapsed && (
         <div className="console-logs">
           {logs.length === 0 ? (
-            <div className="console-empty">En espera de ejecución de modelo...</div>
+            <div className="console-empty">Awaiting model execution...</div>
           ) : (
             logs.map((log, idx) => (
               <div key={idx} className={`console-line ${log.type || 'info'}`}>
                 <span className="log-time">[{log.time}]</span>
                 <span className="log-text">{log.text}</span>
-                
               </div>
             ))
           )}
