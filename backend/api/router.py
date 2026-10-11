@@ -32,6 +32,8 @@ class ProblemRequest(BaseModel):
     angle_init: Optional[str] = "Automática"
     gamma0: Optional[float] = None
     beta0: Optional[float] = None
+    backend: Optional[Any] = None
+    backend_config: Optional[Dict[str, Any]] = None
 
 
 @router.post("/solve")
@@ -40,10 +42,10 @@ async def solve_problem(request: ProblemRequest):
     Endpoint principal que recibe el problema declarativo.
     El flujo consiste en:
     1. Parsear el problema declarativo a programación entera binaria y QUBO.
-    2. Ejecutar en paralelo mediante hilos la extracción de features y la simulación cuántica QAOA.
+    2. Ejecutar en paralelo mediante hilos la extracción de features y la simulación cuántica QAOA con Qiskit.
     3. Retornar inmediatamente los resultados consolidados en milisegundos.
     """
-    logger.info(f"Recibida petición de resolución con solver: {request.solver}")
+    logger.info(f"Recibida petición de resolución con solver: {request.solver} | Backend: {request.backend}")
 
     # 1. Parsing a Programación Entera Binaria y QUBO
     try:
@@ -55,14 +57,16 @@ async def solve_problem(request: ProblemRequest):
     qubo_problem = binary_problem.topology.get("qubo_problem")
     original_qp = binary_problem.topology.get("original_qp")
 
-    # 2. Empaquetar hiperparámetros
+    # 2. Empaquetar hiperparámetros y backend
     hyperparams = {
         "shots": request.shots or 8192,
         "p_steps": request.p_steps or 2,
         "optimizer": request.optimizer or "COBYLA",
         "angle_init": request.angle_init or "Automática",
         "gamma0": request.gamma0,
-        "beta0": request.beta0
+        "beta0": request.beta0,
+        "backend": request.backend,
+        "backend_config": request.backend_config
     }
 
     # 3. Paralelización de Extracción de Features y Resolución QAOA con Hilos
@@ -82,7 +86,7 @@ async def solve_problem(request: ProblemRequest):
 
     def run_quantum():
         try:
-            return run_qaoa(binary_problem, hyperparams)
+            return run_qaoa(binary_problem, hyperparams, backend=request.backend)
         except Exception as ex:
             logger.error(f"Error ejecutando QAOA: {ex}", exc_info=True)
             raise ex
@@ -98,7 +102,7 @@ async def solve_problem(request: ProblemRequest):
 
     return {
         "status": "success",
-        "message": "Problema parseado y resuelto exitosamente con QAOA simulado en Qiskit.",
+        "message": "Problema parseado y resuelto exitosamente con QAOA ejecutado en Qiskit.",
         "parsed_summary": {
             "variables_count": len(binary_problem.parsed_model.variables),
             "variables": list(binary_problem.parsed_model.variables.keys()),
@@ -119,7 +123,9 @@ async def solve_problem(request: ProblemRequest):
             "distribution": qaoa_results.get("distribution", []),
             "execution_time_ms": qaoa_results.get("execution_time_ms", 0.0),
             "qubits_count": qaoa_results.get("qubits_count", 0),
-            "hardware": qaoa_results.get("hardware", "Qiskit Statevector (Simulado Rápido)"),
+            "circuit_depth": qaoa_results.get("circuit_depth", 0),
+            "hardware": qaoa_results.get("hardware", "Qiskit AerSimulator (Statevector Acelerado)"),
+            "qasm": qaoa_results.get("qasm", ""),
             "console_logs": qaoa_results.get("console_logs", [])
         }
     }

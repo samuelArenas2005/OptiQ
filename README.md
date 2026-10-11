@@ -146,6 +146,32 @@ Abre tu navegador en `http://localhost:3000` para utilizar la interfaz visual in
 
 ---
 
+### 3. Despliegue en Producción con Docker (Oracle Cloud / VM)
+
+Para desplegar el backend en una instancia de **Oracle Cloud Infrastructure (OCI)** o cualquier servidor con Docker:
+
+```bash
+# Construir y levantar el contenedor en segundo plano
+docker compose up -d --build
+
+# Ver logs en tiempo real
+docker compose logs -f optiq-backend
+
+# Verificar estado y healthcheck
+docker compose ps
+
+# Detener el contenedor
+docker compose down
+```
+
+> **Nota para Oracle Cloud:** Asegúrate de abrir el puerto `8000` en la lista de seguridad de la VCN (*Ingress Rules*) y en el firewall del sistema operativo de la máquina virtual (`iptables` o `firewalld`):
+> ```bash
+> sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 8000 -j ACCEPT
+> sudo netfilter-persistent save
+> ```
+
+---
+
 ## Superficie de la API
 
 ### Endpoint: `POST /api/solve`

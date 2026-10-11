@@ -865,6 +865,65 @@ export default function RightTelemetryPanel({
                   </div>
                 </div>
 
+                {/* Row: Backend Cuántico (Qiskit / Qollab) */}
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-medium text-on-surface">
+                      Backend Cuántico (Qiskit / Qollab)
+                    </label>
+                    <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-primary/10 text-primary font-medium">
+                      Hackatón Qollab
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <select
+                      value={hyperparams?.backend || 'aer_simulator'}
+                      onChange={(e) =>
+                        onUpdateHyperparams({
+                          ...hyperparams,
+                          backend: e.target.value
+                        })
+                      }
+                      className="w-full bg-surface-container-lowest border border-outline-variant/60 hover:border-primary/60 focus:border-primary rounded-lg px-2.5 py-1 text-on-surface font-mono text-xs appearance-none focus:outline-none focus:ring-1 focus:ring-primary/20 cursor-pointer pr-7 shadow-sm transition-colors"
+                    >
+                      <option value="aer_simulator">Qiskit AerSimulator (Local Óptimo)</option>
+                      <option value="ionq_simulator">Qollab / IonQ Simulator (Cloud / Emulado)</option>
+                      <option value="ionq_qpu">Qollab / IonQ QPU (Físico / Emulado)</option>
+                    </select>
+                    <span className="material-symbols-outlined text-[16px] text-primary pointer-events-none absolute right-2 top-1/2 -translate-y-1/2">
+                      unfold_more
+                    </span>
+                  </div>
+
+                  {/* Campo opcional de API Key cuando se selecciona Qollab / IonQ */}
+                  {(hyperparams?.backend === 'ionq_simulator' || hyperparams?.backend === 'ionq_qpu') && (
+                    <div className="flex flex-col gap-0.5 pt-0.5">
+                      <div className="flex items-center justify-between text-[10px] font-mono text-outline">
+                        <span>API Key Qollab / IonQ (Opcional)</span>
+                        <span className="text-[9px] opacity-75">o variable de entorno</span>
+                      </div>
+                      <div className="flex items-center bg-surface-container-lowest rounded-lg px-2 py-1 border border-outline-variant/60 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 shadow-sm">
+                        <input
+                          type="password"
+                          value={hyperparams?.backendConfig?.apiKey || ''}
+                          onChange={(e) =>
+                            onUpdateHyperparams({
+                              ...hyperparams,
+                              backendConfig: {
+                                ...(hyperparams?.backendConfig || {}),
+                                apiKey: e.target.value,
+                                api_key: e.target.value
+                              }
+                            })
+                          }
+                          className="w-full bg-transparent font-mono text-xs text-on-surface focus:outline-none"
+                          placeholder="Token de acceso (vacío = emulación nativa)"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* Row 2: Optimizador Clásico */}
                 <div className="flex flex-col gap-1">
                   <label className="text-[11px] font-medium text-on-surface">Optimizador Clásico</label>

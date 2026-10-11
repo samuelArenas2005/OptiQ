@@ -1,0 +1,14 @@
+.git
+.gitignore
+.venv
+frontend
+node_modules
+docs
+*.md
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.coverage
+htmlcov

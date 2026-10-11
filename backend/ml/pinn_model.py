@@ -10,9 +10,7 @@ def get_hyperparameters(topology):
     En lugar de hacer Random Search, esta red minimiza 
     el Hamiltoniano del problema subyacente.
     """
-    print(f"Calculando hiperparámetros de PINN basados en la topología: {topology}")
-    
-    # Simulación de Inferencia del modelo PyTorch
+    # Simulación de Inferencia del modelo PyTorch / PINN
     optimal_gamma = [0.123]
     optimal_beta = [0.456]
     
