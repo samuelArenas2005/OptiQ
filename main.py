@@ -27,6 +27,7 @@ import time
 import logging
 import warnings
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 # Silenciar advertencias y logs internos ruidosos para una salida completamente limpia
 warnings.filterwarnings("ignore")
@@ -42,6 +43,9 @@ else:
 
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
+backend_dir = BASE_DIR / "backend"
+if backend_dir.exists() and str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
 
 # Importar funciones y módulos del backend
 try:
@@ -52,12 +56,13 @@ try:
     BACKEND_AVAILABLE = True
 except ImportError:
     try:
-        from parser.problem_parser import parse_problem
-        from ml.pinn_model import get_hyperparameters
-        from quantum.qaoa_solver import run_qaoa
-        from quantum.feature_extractor import extract_bip_features
+        import importlib
+        parse_problem = importlib.import_module("parser.problem_parser").parse_problem
+        get_hyperparameters = importlib.import_module("ml.pinn_model").get_hyperparameters
+        run_qaoa = importlib.import_module("quantum.qaoa_solver").run_qaoa
+        extract_bip_features = importlib.import_module("quantum.feature_extractor").extract_bip_features
         BACKEND_AVAILABLE = True
-    except ImportError as err:
+    except (ImportError, ModuleNotFoundError) as err:
         print(f"Error cargando módulos del backend: {err}")
         BACKEND_AVAILABLE = False
 
@@ -69,12 +74,12 @@ BENCHMARKS = {
         "title": "Problema de la Mochila Binaria (0/1 Knapsack)",
         "description": "Seleccionar el subconjunto de objetos de mayor valor sin exceder la capacidad máxima.",
         "code": """% 0/1 Knapsack Problem
-int: n = 4;
-int: capacity = 7;
-array[1..4] of int: weights = [2, 3, 4, 5];
-array[1..4] of int: values  = [3, 4, 5, 8];
+int: n = 10;
+int: capacity = 25;
+array[1..10] of int: weights = [3, 4, 6, 5, 2, 7, 8, 3, 5, 4];
+array[1..10] of int: values  = [5, 6, 9, 8, 3, 11, 14, 5, 7, 6];
 
-array[1..4] of var 0..1: x;
+array[1..10] of var 0..1: x;
 
 % Restriccion de peso maximo
 constraint sum(i in 1..n)(weights[i] * x[i]) <= capacity;
@@ -230,7 +235,7 @@ def solve_classical_exact(binary_problem: Any) -> dict:
     }
 
 
-def run_optiq_demo(benchmark_key: str = "knapsack", p_steps: int = 2, shots: int = 8192):
+def run_optiq_demo(benchmark_key: str = "knapsack", p_steps: int = 5, shots: int = 8192):
     """
     Ejecuta la canalización completa de OptiQ de forma interactiva y visual en la terminal.
     """
@@ -433,7 +438,7 @@ def main(*args, **kwargs):
         return
 
     benchmark_key = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].isdigit() else kwargs.get("benchmark", "knapsack")
-    p_steps = int(sys.argv[2]) if len(sys.argv) > 2 and sys.argv[2].isdigit() else int(kwargs.get("p_steps", 2))
+    p_steps = int(sys.argv[2]) if len(sys.argv) > 2 and sys.argv[2].isdigit() else int(kwargs.get("p_steps", 6))
     shots = int(kwargs.get("shots", sys.argv[3] if len(sys.argv) > 3 and sys.argv[3].isdigit() else 8192))
 
     if str(benchmark_key).lower() not in BENCHMARKS and benchmark_key != "--help":
