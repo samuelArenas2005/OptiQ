@@ -17,13 +17,32 @@ export default function RightTelemetryPanel({
 }) {
   // Fallback internal tab state if not controlled
   const [internalTab, setInternalTab] = useState(hasRun ? 'solution' : 'params');
+  const [copiedState, setCopiedState] = useState(false);
+  const [hoveredSample, setHoveredSample] = useState(null);
+  const [featureSubTab, setFeatureSubTab] = useState('global'); // 'global' | 'nodes' | 'edges'
+
   const currentTab = onSelectTab ? activeTab : internalTab;
   const setTab = onSelectTab || setInternalTab;
 
   const parsedSummary = result?.parsedSummary;
   const details = result?.details;
+  const features = result?.features;
   const isSuccess = result?.success;
-  const quboNodes = parsedSummary?.qubo_nodes || 0;
+  const quboNodes = parsedSummary?.qubo_nodes || details?.qubits_count || 0;
+
+  const handleCopyBitstring = () => {
+    if (details?.optimal_bitstring) {
+      navigator.clipboard.writeText(details.optimal_bitstring);
+      setCopiedState(true);
+      setTimeout(() => setCopiedState(false), 1500);
+    }
+  };
+
+  const distribution = details?.distribution || [];
+  const maxProb = distribution.length > 0 ? Math.max(...distribution.map(d => d.prob), 0.01) : 1;
+
+  // Variables dict
+  const solutionEntries = Object.entries(details?.solution || {});
 
   return (
     <div className="w-full h-full flex flex-col gap-2.5 overflow-hidden">
@@ -51,7 +70,7 @@ export default function RightTelemetryPanel({
         </button>
       </div>
 
-      {/* Runtime Parameter Capsule Bar - Beautified and evenly distributed */}
+      {/* Runtime Parameter Capsule Bar */}
       <div className="bg-surface-container-low/70 rounded-xl px-2 py-2 border border-outline-variant/50 shadow-sm grid grid-cols-4 divide-x divide-outline-variant/40 text-center font-mono shrink-0">
         <div className="flex flex-col items-center justify-center px-1">
           <span className="text-outline text-[10px] font-sans font-semibold tracking-wide">
@@ -67,7 +86,7 @@ export default function RightTelemetryPanel({
             DEPTH
           </span>
           <span className="font-bold text-xs text-on-surface mt-0.5">
-            p = {hyperparams?.pSteps || 3}
+            p = {hyperparams?.pSteps || 2}
           </span>
         </div>
 
@@ -114,8 +133,6 @@ export default function RightTelemetryPanel({
       ) : (
         /* =========================================================================
            SINGLE CONSOLIDATED WINDOW CARD WITH TABS
-           "mejor solo un card para console y solution, y que se pueda seleccionar uno
-            o el otro como si fueran tab de ventanas"
         ========================================================================= */
         <div className="flex-1 min-h-0 bg-surface-container-lowest rounded-xl border border-outline-variant/60 shadow-sm flex flex-col overflow-hidden">
           {/* Window Tabs Header */}
@@ -201,7 +218,7 @@ export default function RightTelemetryPanel({
                 <div>
                   <div className="flex items-center justify-between pb-2 mb-3 border-b border-outline-variant/30">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-semibold text-on-surface">Resultados del Algoritmo</span>
+                      <span className="text-xs font-semibold text-on-surface">Resultados QAOA</span>
                       <span
                         className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
                           !hasRun
@@ -216,14 +233,26 @@ export default function RightTelemetryPanel({
                     </div>
 
                     {hasRun && isSuccess && (
-                      <button
-                        onClick={() => window.print()}
-                        className="flex items-center gap-1 px-2 py-0.5 rounded border border-outline-variant/60 bg-surface-container-low hover:bg-surface-container hover:text-primary text-on-surface-variant text-[11px] transition-colors cursor-pointer"
-                        title="Imprimir o exportar solución"
-                      >
-                        <span className="material-symbols-outlined text-[13px]">print</span>
-                        <span>Exportar</span>
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={handleCopyBitstring}
+                          className="flex items-center gap-1 px-2 py-0.5 rounded border border-outline-variant/60 bg-surface-container-low hover:bg-surface-container hover:text-primary text-on-surface-variant text-[11px] transition-colors cursor-pointer"
+                          title="Copiar cadena de bits óptima"
+                        >
+                          <span className="material-symbols-outlined text-[13px]">
+                            {copiedState ? 'check' : 'content_copy'}
+                          </span>
+                          <span>{copiedState ? 'Copiado' : 'Copiar Bits'}</span>
+                        </button>
+                        <button
+                          onClick={() => window.print()}
+                          className="flex items-center gap-1 px-2 py-0.5 rounded border border-outline-variant/60 bg-surface-container-low hover:bg-surface-container hover:text-primary text-on-surface-variant text-[11px] transition-colors cursor-pointer"
+                          title="Exportar solución"
+                        >
+                          <span className="material-symbols-outlined text-[13px]">print</span>
+                          <span>Exportar</span>
+                        </button>
+                      </div>
                     )}
                   </div>
 
@@ -232,9 +261,9 @@ export default function RightTelemetryPanel({
                       <span className="material-symbols-outlined text-[32px] opacity-40 mb-1.5 text-primary">
                         biotech
                       </span>
-                      <p className="text-xs font-semibold text-on-surface-variant">Sin solución calculada</p>
+                      <p className="text-xs font-semibold text-on-surface-variant">Sin simulación calculada</p>
                       <p className="text-[11px] max-w-xs mt-1 text-outline">
-                        Presiona <strong className="text-primary font-medium">RUN</strong> para ejecutar la formulación QAOA y obtener la asignación óptima.
+                        Presiona <strong className="text-primary font-medium">RUN</strong> para compilar a QUBO, mapear a Ising y resolver con QAOA simulado en Qiskit.
                       </p>
                     </div>
                   ) : !isSuccess ? (
@@ -247,66 +276,188 @@ export default function RightTelemetryPanel({
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {/* Metric Banner */}
-                      <div className="p-3 rounded-xl bg-surface-container-low/70 border border-outline-variant/40 flex items-center justify-between">
+                      {/* Metric Banner: Optimal Value & Energy */}
+                      <div className="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-surface-container-low/70 border border-outline-variant/40">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-outline uppercase font-semibold">
+                            Costo / Objetivo Óptimo
+                          </span>
+                          <span className="text-lg font-bold text-primary font-mono mt-0.5">
+                            {details?.optimal_value !== undefined ? details.optimal_value : '—'}
+                          </span>
+                          <span className="text-[10px] text-outline font-mono">
+                            {parsedSummary?.objective?.sense === 'maximize' ? 'Valor máximo' : 'Valor mínimo'}
+                          </span>
+                        </div>
+
+                        <div className="flex flex-col border-l border-outline-variant/40 pl-2.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] text-outline uppercase font-semibold">
+                              ⟨H_cost⟩ Hamiltoniano
+                            </span>
+                          </div>
+                          <span className="text-sm font-semibold text-on-surface font-mono mt-0.5">
+                            {details?.energy !== undefined ? `${details.energy.toFixed(3)} eV` : '—'}
+                          </span>
+                          <span className="text-[10px] text-outline font-mono">
+                            {details?.execution_time_ms ? `Tiempo: ${details.execution_time_ms} ms` : 'Simulación rápida'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Optimal Ground State & Probability */}
+                      <div className="p-2.5 rounded-xl bg-primary/5 border border-primary/20 flex items-center justify-between">
                         <div>
-                          <span className="text-[10px] text-outline uppercase font-semibold">
-                            Fase Preliminar
+                          <span className="text-[10px] text-primary uppercase font-semibold tracking-wider block">
+                            Eigenestado Medido (Ground State)
                           </span>
-                          <div className="text-base font-bold text-primary tracking-tight mt-0.5">
-                            Parseo Exitoso
-                          </div>
+                          <span className="font-mono text-sm font-bold text-primary mt-0.5 block">
+                            |{details?.optimal_bitstring || '—'}⟩
+                          </span>
                         </div>
-                        <div className="h-7 w-px bg-outline-variant/40"></div>
                         <div className="text-right">
-                          <span className="text-[10px] text-outline uppercase font-semibold">
-                            Nodos Binarios
+                          <span className="text-[10px] text-outline uppercase font-semibold block">
+                            Probabilidad
                           </span>
-                          <div className="font-mono text-sm font-bold text-on-surface mt-0.5">
-                            {quboNodes} Qubits
-                          </div>
+                          <span className="font-mono text-xs font-bold text-secondary bg-secondary/10 px-2 py-0.5 rounded-full mt-0.5 inline-block">
+                            {details?.state_probability || '—'}
+                          </span>
                         </div>
                       </div>
 
-                      {/* QUBO Variables */}
-                      <div className="text-xs text-on-surface-variant bg-surface-container-low/50 p-2.5 rounded-lg border border-outline-variant/30 font-mono">
-                        <span className="text-[11px] text-outline font-sans block mb-1">
-                          Variables QUBO Mapeadas:
-                        </span>
-                        <p className="break-words">
-                          {(parsedSummary?.qubo_variables || parsedSummary?.variables || []).join(', ') || 'Sin variables asignadas'}
-                        </p>
+                      {/* Binary Variable Assignment Solution */}
+                      <div className="bg-surface-container-low/50 p-2.5 rounded-lg border border-outline-variant/30">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-[11px] font-semibold text-on-surface flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[14px] text-primary">check_circle</span>
+                            Asignación Óptima de Variables
+                          </span>
+                          <span className="text-[10px] text-outline font-mono">
+                            {solutionEntries.length} variables
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto pt-1">
+                          {solutionEntries.length > 0 ? (
+                            solutionEntries.map(([vName, vVal]) => {
+                              const isOne = Number(vVal) === 1;
+                              return (
+                                <div
+                                  key={vName}
+                                  className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-mono border transition-colors ${
+                                    isOne
+                                      ? 'bg-secondary/10 border-secondary/30 text-secondary font-semibold'
+                                      : 'bg-surface-container-lowest border-outline-variant/40 text-on-surface-variant'
+                                  }`}
+                                  title={`${vName} = ${vVal}`}
+                                >
+                                  <span>{vName}:</span>
+                                  <span className={isOne ? 'text-secondary font-bold' : 'text-outline'}>
+                                    {vVal}
+                                  </span>
+                                  <span className="text-[9px] uppercase tracking-wider ml-0.5 opacity-80">
+                                    {isOne ? '✓' : '✗'}
+                                  </span>
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <span className="text-xs text-outline font-mono">Sin variables calculadas</span>
+                          )}
+                        </div>
                       </div>
 
-                      {/* Objective */}
-                      <div className="text-xs text-on-surface-variant bg-surface-container-low/50 p-2.5 rounded-lg border border-outline-variant/30">
-                        <span className="text-[11px] text-outline block mb-0.5">
-                          Función Objetivo:
-                        </span>
-                        <p className="font-mono font-medium text-on-surface">
-                          {parsedSummary?.objective?.sense || 'Maximizar beneficio'}
-                        </p>
-                      </div>
+                      {/* State Probabilities Histogram */}
+                      {distribution.length > 0 && (
+                        <div className="bg-surface-container-low/50 p-2.5 rounded-lg border border-outline-variant/30">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-[11px] font-semibold text-on-surface flex items-center gap-1">
+                              <span className="material-symbols-outlined text-[14px] text-tertiary">bar_chart</span>
+                              Distribución de Estados ({hyperparams?.shots ? Number(hyperparams.shots).toLocaleString() : '8,192'} shots)
+                            </span>
+                            <span className="text-[10px] text-outline font-mono">
+                              {hoveredSample
+                                ? `|${hoveredSample.bits}⟩: ${(hoveredSample.prob * 100).toFixed(1)}%`
+                                : `P_max = ${details?.state_probability || ''}`}
+                            </span>
+                          </div>
+
+                          <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                            {distribution.slice(0, 8).map((sample, idx) => {
+                              const probPct = Math.round(sample.prob * 1000) / 10;
+                              const barWidth = Math.max(6, Math.round((sample.prob / maxProb) * 100));
+                              const isPeak = sample.peak || sample.bits === details?.optimal_bitstring;
+
+                              return (
+                                <div
+                                  key={idx}
+                                  onMouseEnter={() => setHoveredSample(sample)}
+                                  onMouseLeave={() => setHoveredSample(null)}
+                                  className={`p-1.5 rounded-md transition-colors ${
+                                    isPeak
+                                      ? 'bg-primary/10 border border-primary/20'
+                                      : 'hover:bg-surface-container-low'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between text-[11px] font-mono mb-1">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className={isPeak ? 'font-bold text-primary' : 'text-on-surface'}>
+                                        |{sample.bits}⟩
+                                      </span>
+                                      {isPeak && (
+                                        <span className="text-[9px] px-1 py-0.2 bg-primary/20 text-primary rounded font-sans font-medium">
+                                          Óptimo
+                                        </span>
+                                      )}
+                                      {sample.feasible && !isPeak && (
+                                        <span className="text-[9px] text-secondary">Factible</span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      {sample.fval !== undefined && (
+                                        <span className="text-outline text-[10px]">
+                                          f={sample.fval}
+                                        </span>
+                                      )}
+                                      <span className="font-semibold text-on-surface text-[10px]">
+                                        {probPct}%
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="w-full h-1.5 bg-surface-container rounded-full overflow-hidden">
+                                    <div
+                                      className={`h-full rounded-full transition-all duration-300 ${
+                                        isPeak ? 'bg-primary' : 'bg-secondary/70'
+                                      }`}
+                                      style={{ width: `${barWidth}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
 
                 <div className="mt-4 pt-2 border-t border-outline-variant/30 text-outline text-[11px] flex items-center justify-between">
-                  <span>{hasRun && isSuccess ? 'Estructura binaria construida' : 'Esperando ejecución'}</span>
+                  <span>{hasRun && isSuccess ? 'Circuito simulado con éxito' : 'Esperando ejecución'}</span>
                   <span className="text-primary font-mono font-medium">
-                    {hasRun && isSuccess ? `Solver: ${details?.solver_used || 'qaoa-pinn'}` : 'qaoa'}
+                    {hasRun && isSuccess ? (details?.hardware || 'Qiskit Statevector') : 'qaoa'}
                   </span>
                 </div>
               </div>
             )}
 
-            {/* ================= TAB 2: CONSOLA ================= */}
+            {/* ================= TAB 2: CONSOLA & FEATURES ================= */}
             {currentTab === 'console' && (
               <div className="flex-1 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between pb-2 mb-3 border-b border-outline-variant/30">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-semibold text-on-surface">Console Output</span>
+                      <span className="text-xs font-semibold text-on-surface">Console &amp; BIP Features</span>
                       <span
                         className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
                           !hasRun
@@ -316,7 +467,7 @@ export default function RightTelemetryPanel({
                             : 'bg-error/10 text-error font-medium'
                         }`}
                       >
-                        {!hasRun ? 'En espera' : isSuccess ? 'Validado con éxito' : 'Error'}
+                        {!hasRun ? 'En espera' : isSuccess ? 'Completado' : 'Error'}
                       </span>
                     </div>
                     {hasRun && (
@@ -333,7 +484,7 @@ export default function RightTelemetryPanel({
                       </span>
                       <p className="text-xs font-semibold text-on-surface-variant">Consola en espera</p>
                       <p className="text-[11px] max-w-xs mt-1 text-outline">
-                        Presiona <strong className="text-primary font-medium">RUN</strong> para parsear el modelo declarativo en FastAPI.
+                        Presiona <strong className="text-primary font-medium">RUN</strong> para extraer las features del grafo y ver la traza del solver.
                       </p>
                     </div>
                   ) : !isSuccess ? (
@@ -345,48 +496,220 @@ export default function RightTelemetryPanel({
                       <p className="text-[11px] text-on-surface break-words mt-1">{result?.error}</p>
                     </div>
                   ) : (
-                    <div className="space-y-2 font-mono text-xs text-on-surface-variant">
-                      <div className="flex justify-between items-center pb-1">
-                        <span className="text-outline">Estado del parser:</span>
-                        <span className="font-semibold text-secondary flex items-center gap-1">
-                          <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                          Validado con éxito
-                        </span>
+                    <div className="space-y-3 font-mono text-xs">
+                      {/* Features Navigation Pills */}
+                      <div className="flex items-center gap-1 bg-surface-container-low p-1 rounded-lg border border-outline-variant/50 font-sans">
+                        <button
+                          type="button"
+                          onClick={() => setFeatureSubTab('global')}
+                          className={`flex-1 py-1 px-1.5 text-center rounded-md text-[11px] transition-all cursor-pointer ${
+                            featureSubTab === 'global'
+                              ? 'bg-surface-container-lowest text-primary shadow-sm font-semibold'
+                              : 'text-on-surface-variant hover:text-on-surface'
+                          }`}
+                        >
+                          Topología Global
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFeatureSubTab('nodes')}
+                          className={`flex-1 py-1 px-1.5 text-center rounded-md text-[11px] transition-all cursor-pointer ${
+                            featureSubTab === 'nodes'
+                              ? 'bg-surface-container-lowest text-primary shadow-sm font-semibold'
+                              : 'text-on-surface-variant hover:text-on-surface'
+                          }`}
+                        >
+                          Nodos ({features?.nodes?.length || 0})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFeatureSubTab('edges')}
+                          className={`flex-1 py-1 px-1.5 text-center rounded-md text-[11px] transition-all cursor-pointer ${
+                            featureSubTab === 'edges'
+                              ? 'bg-surface-container-lowest text-primary shadow-sm font-semibold'
+                              : 'text-on-surface-variant hover:text-on-surface'
+                          }`}
+                        >
+                          Aristas ({features?.edges?.length || 0})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFeatureSubTab('logs')}
+                          className={`flex-1 py-1 px-1.5 text-center rounded-md text-[11px] transition-all cursor-pointer ${
+                            featureSubTab === 'logs'
+                              ? 'bg-surface-container-lowest text-primary shadow-sm font-semibold'
+                              : 'text-on-surface-variant hover:text-on-surface'
+                          }`}
+                        >
+                          Logs
+                        </button>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-outline">Variables detectadas:</span>
-                        <span className="font-medium text-on-surface">
-                          {parsedSummary?.variables_count ?? 0} (
-                          {(parsedSummary?.variables || []).slice(0, 4).join(', ') || 'ninguna'}
-                          {(parsedSummary?.variables || []).length > 4 ? '...' : ''})
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-outline">Restricciones declarativas:</span>
-                        <span className="font-medium text-on-surface">
-                          {parsedSummary?.constraints_count ?? 0}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-outline">Topología QUBO (Nodos):</span>
-                        <span className="font-semibold text-primary">
-                          {quboNodes} nodos
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-outline">Función Objetivo:</span>
-                        <span className="font-medium text-on-surface truncate max-w-[180px]">
-                          {parsedSummary?.objective?.sense || 'Sin objetivo'}
-                        </span>
-                      </div>
+
+                      {/* SUBTAB 1: GLOBAL GRAPH FEATURES */}
+                      {featureSubTab === 'global' && (
+                        <div className="bg-surface-container-low/60 p-2.5 rounded-lg border border-outline-variant/40 space-y-2">
+                          <span className="text-[10px] text-outline uppercase font-semibold font-sans block">
+                            Topología Global del Grafo (G) &amp; Ising
+                          </span>
+
+                          <div className="grid grid-cols-2 gap-2 text-[11px]">
+                            <div className="bg-surface-container-lowest p-2 rounded border border-outline-variant/30">
+                              <span className="text-outline text-[10px] block">Variables (|V|):</span>
+                              <span className="font-bold text-primary">
+                                {features?.global?.num_variables_V ?? quboNodes} Qubits
+                              </span>
+                            </div>
+
+                            <div className="bg-surface-container-lowest p-2 rounded border border-outline-variant/30">
+                              <span className="text-outline text-[10px] block">Interacciones (|E|):</span>
+                              <span className="font-bold text-on-surface">
+                                {features?.global?.num_interactions_E ?? 0} enlaces
+                              </span>
+                            </div>
+
+                            <div className="bg-surface-container-lowest p-2 rounded border border-outline-variant/30">
+                              <span className="text-outline text-[10px] block">Gap Espectral (λ₂):</span>
+                              <span className="font-bold text-secondary">
+                                {features?.global?.laplacian_spectral_gap_lambda2 ?? 0}
+                              </span>
+                              <span className="text-[9px] text-outline block">Propagación cuántica</span>
+                            </div>
+
+                            <div className="bg-surface-container-lowest p-2 rounded border border-outline-variant/30">
+                              <span className="text-outline text-[10px] block">Radio Espectral (λ_max):</span>
+                              <span className="font-bold text-on-surface">
+                                {features?.global?.laplacian_spectral_radius ?? 0}
+                              </span>
+                            </div>
+
+                            <div className="bg-surface-container-lowest p-2 rounded border border-outline-variant/30">
+                              <span className="text-outline text-[10px] block">Densidad (|E|/|V|):</span>
+                              <span className="font-bold text-on-surface">
+                                {features?.global?.clause_variable_ratio ?? 0}
+                              </span>
+                            </div>
+
+                            <div className="bg-surface-container-lowest p-2 rounded border border-outline-variant/30">
+                              <span className="text-outline text-[10px] block">Índice Frustración:</span>
+                              <span className="font-bold text-tertiary">
+                                {Math.round((features?.global?.global_frustration_index || 0) * 100)}%
+                              </span>
+                              <span className="text-[9px] text-outline block">
+                                {features?.global?.frustrated_triangles ?? 0}/{features?.global?.total_triangles ?? 0} ciclos
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Statistics h_i and J_ij */}
+                          <div className="bg-surface-container-lowest p-2 rounded border border-outline-variant/30 text-[10px] space-y-1">
+                            <div className="flex justify-between">
+                              <span className="text-outline">Coefs. Lineales h_i:</span>
+                              <span className="text-on-surface">
+                                μ={features?.global?.h_statistics?.mean ?? 0}, σ²={features?.global?.h_statistics?.variance ?? 0}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-outline">Acoplamientos J_ij:</span>
+                              <span className="text-on-surface">
+                                μ={features?.global?.J_statistics?.mean ?? 0}, σ²={features?.global?.J_statistics?.variance ?? 0}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* SUBTAB 2: NODE FEATURES */}
+                      {featureSubTab === 'nodes' && (
+                        <div className="bg-surface-container-low/60 p-2 rounded-lg border border-outline-variant/40 max-h-48 overflow-y-auto">
+                          <table className="w-full text-left text-[10px]">
+                            <thead>
+                              <tr className="border-b border-outline-variant/40 text-outline">
+                                <th className="pb-1 font-semibold">Variable</th>
+                                <th className="pb-1 font-semibold">h_i</th>
+                                <th className="pb-1 font-semibold">Grado d_i</th>
+                                <th className="pb-1 font-semibold">Clustering</th>
+                                <th className="pb-1 font-semibold">Penalización</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-outline-variant/20">
+                              {(features?.nodes || []).map((n) => (
+                                <tr key={n.index} className="hover:bg-surface-container-lowest">
+                                  <td className="py-1 text-primary font-bold">{n.variable}</td>
+                                  <td className="py-1">{n.h_i}</td>
+                                  <td className="py-1">{n.degree}</td>
+                                  <td className="py-1">{n.clustering_coefficient}</td>
+                                  <td className="py-1 text-outline">{n.constraint_multiplier}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+
+                      {/* SUBTAB 3: EDGE FEATURES */}
+                      {featureSubTab === 'edges' && (
+                        <div className="bg-surface-container-low/60 p-2 rounded-lg border border-outline-variant/40 max-h-48 overflow-y-auto">
+                          {(features?.edges || []).length > 0 ? (
+                            <table className="w-full text-left text-[10px]">
+                              <thead>
+                                <tr className="border-b border-outline-variant/40 text-outline">
+                                  <th className="pb-1 font-semibold">Arista (u, v)</th>
+                                  <th className="pb-1 font-semibold">J_ij</th>
+                                  <th className="pb-1 font-semibold">Tipo</th>
+                                  <th className="pb-1 font-semibold">Frustración</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-outline-variant/20">
+                                {(features?.edges || []).map((e, idx) => (
+                                  <tr key={idx} className="hover:bg-surface-container-lowest">
+                                    <td className="py-1 text-primary">{e.u_var} — {e.v_var}</td>
+                                    <td className="py-1 font-bold">{e.J_ij}</td>
+                                    <td className="py-1 text-[9px] uppercase">
+                                      <span
+                                        className={
+                                          e.coupling_type === 'antiferromagnetic'
+                                            ? 'text-tertiary'
+                                            : 'text-secondary'
+                                        }
+                                      >
+                                        {e.coupling_type === 'antiferromagnetic' ? 'Antiferro' : 'Ferro'}
+                                      </span>
+                                    </td>
+                                    <td className="py-1">{e.local_frustration_index}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          ) : (
+                            <span className="text-outline text-[11px] p-2 block text-center">
+                              No hay acoplamientos cuadráticos en el Hamiltoniano.
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* SUBTAB 4: LOGS */}
+                      {featureSubTab === 'logs' && (
+                        <div className="bg-surface-container-lowest p-2 rounded-lg border border-outline-variant/40 max-h-48 overflow-y-auto text-[10px] space-y-1 text-on-surface-variant font-mono">
+                          {((details?.console_logs && details.console_logs.length > 0)
+                            ? details.console_logs
+                            : (features?.console_summary || [])
+                          ).map((line, idx) => (
+                            <div key={idx} className="leading-relaxed">
+                              <span className="text-outline mr-1.5">&gt;</span>
+                              {line}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
 
                 <div className="mt-4 pt-2 border-t border-outline-variant/30 flex items-center justify-between text-outline text-[11px]">
-                  <span>FastAPI Backend • /api/solve</span>
+                  <span>FastAPI • /api/solve</span>
                   <span className={hasRun && isSuccess ? 'text-secondary font-medium' : ''}>
-                    {hasRun && isSuccess ? 'Parseo verificado' : 'Modo escucha'}
+                    {hasRun && isSuccess ? 'QAOA finalizado' : 'Modo escucha'}
                   </span>
                 </div>
               </div>
@@ -396,7 +719,10 @@ export default function RightTelemetryPanel({
             {currentTab === '3d' && (
               <div className="flex-1 flex flex-col min-h-[260px]">
                 <div className="flex-1 rounded-lg overflow-hidden border border-outline-variant/40 relative bg-surface-container-lowest">
-                  <Visualizer3D qubits={quboNodes > 0 ? quboNodes : 6} />
+                  <Visualizer3D
+                    qubits={quboNodes > 0 ? quboNodes : 6}
+                    bitstring={details?.optimal_bitstring || '1001'}
+                  />
                 </div>
                 <div className="mt-2 text-center text-[11px] text-outline font-mono">
                   Arrastra para rotar la topología tridimensional
@@ -425,7 +751,7 @@ export default function RightTelemetryPanel({
                     <div className="flex items-center justify-between">
                       <label className="text-[11px] font-medium text-on-surface">Capas p-steps</label>
                       <span className="text-[10px] font-mono text-outline">
-                        p = {hyperparams?.pSteps || 3}
+                        p = {hyperparams?.pSteps || 2}
                       </span>
                     </div>
                     <div className="flex items-center bg-surface-container-low rounded-lg px-2 py-1 border border-outline-variant/50">
@@ -434,7 +760,7 @@ export default function RightTelemetryPanel({
                         onClick={() =>
                           onUpdateHyperparams({
                             ...hyperparams,
-                            pSteps: Math.max(1, (hyperparams?.pSteps || 3) - 1)
+                            pSteps: Math.max(1, (hyperparams?.pSteps || 2) - 1)
                           })
                         }
                         className="w-6 h-6 flex items-center justify-center text-on-surface-variant hover:text-on-surface font-bold text-xs cursor-pointer hover:bg-surface-container-lowest rounded-md transition-colors select-none"
@@ -443,14 +769,14 @@ export default function RightTelemetryPanel({
                         -
                       </button>
                       <span className="flex-1 text-center font-mono text-xs font-semibold text-on-surface">
-                        {hyperparams?.pSteps || 3}
+                        {hyperparams?.pSteps || 2}
                       </span>
                       <button
                         type="button"
                         onClick={() =>
                           onUpdateHyperparams({
                             ...hyperparams,
-                            pSteps: Math.min(10, (hyperparams?.pSteps || 3) + 1)
+                            pSteps: Math.min(10, (hyperparams?.pSteps || 2) + 1)
                           })
                         }
                         className="w-6 h-6 flex items-center justify-center text-on-surface-variant hover:text-on-surface font-bold text-xs cursor-pointer hover:bg-surface-container-lowest rounded-md transition-colors select-none"

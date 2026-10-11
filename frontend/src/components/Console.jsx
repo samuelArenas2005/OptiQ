@@ -40,6 +40,7 @@ export default function Console({ logs = [], onClear }) {
               <div key={idx} className={`console-line ${log.type || 'info'}`}>
                 <span className="log-time">[{log.time}]</span>
                 <span className="log-text">{log.text}</span>
+                
               </div>
             ))
           )}
