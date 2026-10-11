@@ -10,9 +10,10 @@ import * as THREE from 'three';
  * - La animación se detiene al llegar al último shot coronando al estado ganador.
  */
 export class BarManager {
-  constructor(scene, config, estados = 4) {
+  constructor(scene, config, estados = 4, options = {}) {
     this.scene = scene;
     this.config = config;
+    this.optimalState = typeof options === 'string' ? options : (options?.optimalState || null);
 
     // Normalizar arreglo de estados
     if (Array.isArray(estados)) {
@@ -28,6 +29,14 @@ export class BarManager {
     this.bars = [];
     this.group = new THREE.Group();
     this.scene.add(this.group);
+
+    // Control del barrido secuencial final hacia la solución óptima
+    this.isSweepActive = false;
+    this.isSweepComplete = false;
+    this.sweepIndex = -1;
+    this.sweepTimer = 0;
+    this.sweepStepDuration = 0.20; // 200 ms por barra en el barrido secuencial
+    this.optimalIndex = -1;
 
     // Colores base neón
     this.neonGreen = new THREE.Color(this.config.colors.neonGreen);
@@ -135,32 +144,74 @@ export class BarManager {
   /**
    * Crea el indicador flotante sobre la tapa superior que sube con la barra
    */
-  createTopBadgeSprite(text, count = 0, isWinner = false) {
+  createTopBadgeSprite(text, count = 0, status = 'normal') {
     const canvas = document.createElement('canvas');
     canvas.width = 256;
     canvas.height = 80;
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    ctx.fillStyle = isWinner ? 'rgba(255, 234, 0, 0.95)' : 'rgba(10, 20, 35, 0.85)';
-    if (ctx.roundRect) ctx.roundRect(8, 8, 240, 64, 14);
-    else ctx.fillRect(8, 8, 240, 64);
-    ctx.fill();
+    const isOptimal = status === 'optimal' || status === true;
+    const isScanning = status === 'scanning';
 
-    ctx.strokeStyle = isWinner ? '#ffffff' : '#38bdf8';
-    ctx.lineWidth = 3;
-    ctx.stroke();
+    if (isOptimal) {
+      // Estado Óptimo final: Dorado Neón Electrizante
+      ctx.fillStyle = 'rgba(255, 215, 0, 0.98)';
+      if (ctx.roundRect) ctx.roundRect(6, 6, 244, 68, 16);
+      else ctx.fillRect(6, 6, 244, 68);
+      ctx.fill();
 
-    ctx.font = 'bold 30px "JetBrains Mono", monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = isWinner ? '#060b14' : '#e0f2fe';
-    ctx.fillText(isWinner ? `👑 |${text}⟩: ${count}` : `|${text}⟩: ${count}`, 128, 40);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 3.5;
+      ctx.stroke();
+
+      ctx.font = 'bold 24px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#0a0e17';
+      ctx.shadowColor = '#ffd700';
+      ctx.shadowBlur = 8;
+      ctx.fillText(`👑 OPTIMAL |${text}⟩: ${count}`, 128, 40);
+    } else if (isScanning) {
+      // Estado durante el barrido visual: Cyan Neón Vibrante
+      ctx.fillStyle = 'rgba(0, 242, 254, 0.95)';
+      if (ctx.roundRect) ctx.roundRect(8, 8, 240, 64, 14);
+      else ctx.fillRect(8, 8, 240, 64);
+      ctx.fill();
+
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      ctx.font = 'bold 28px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#02131d';
+      ctx.shadowBlur = 0;
+      ctx.fillText(`⚡ |${text}⟩: ${count}`, 128, 40);
+    } else {
+      // Estado normal
+      ctx.fillStyle = 'rgba(10, 20, 35, 0.85)';
+      if (ctx.roundRect) ctx.roundRect(8, 8, 240, 64, 14);
+      else ctx.fillRect(8, 8, 240, 64);
+      ctx.fill();
+
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      ctx.font = 'bold 28px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#e0f2fe';
+      ctx.shadowBlur = 0;
+      ctx.fillText(`|${text}⟩: ${count}`, 128, 40);
+    }
 
     const texture = new THREE.CanvasTexture(canvas);
     const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false });
     const sprite = new THREE.Sprite(material);
-    sprite.scale.set(1.25, 0.42, 1);
+    sprite.scale.set(1.28, 0.44, 1);
     sprite.renderOrder = 10;
     return { sprite, texture, canvas };
   }
@@ -312,19 +363,32 @@ export class BarManager {
   setEpochState(shotIndex, totalShots, currentShotState, countsPerState) {
     if (!countsPerState || countsPerState.length === 0) return;
 
-    const isLastShot = shotIndex === totalShots - 1;
+    const isLastShot = shotIndex >= totalShots - 1;
     const maxCount = Math.max(...countsPerState, 1);
 
-    // Identificar el ganador acumulado
-    let winnerIndex = countsPerState.indexOf(Math.max(...countsPerState));
+    // Identificar el índice del estado óptimo
+    if (this.optimalState) {
+      this.optimalIndex = this.estados.indexOf(this.optimalState);
+    }
+    if (this.optimalIndex === -1) {
+      this.optimalIndex = countsPerState.indexOf(Math.max(...countsPerState));
+    }
 
-    if (this.winnerLight) {
-      if (isLastShot && winnerIndex >= 0 && this.bars[winnerIndex]) {
-        const winningBar = this.bars[winnerIndex];
-        this.winnerLight.position.set(winningBar.posX, 6, 2);
-        this.winnerLight.targetIntensity = this.config.effects?.winnerSpotlightIntensity ?? 4.5;
-      } else {
+    if (!isLastShot) {
+      // Mientras transcurren los disparos o si se reinició:
+      this.isSweepActive = false;
+      this.isSweepComplete = false;
+      this.sweepIndex = -1;
+      this.sweepTimer = 0;
+      if (this.winnerLight) {
         this.winnerLight.targetIntensity = 0;
+      }
+    } else {
+      // Llegó el último disparo: Iniciar el recorrido por todos los tops si no se ha iniciado
+      if (!this.isSweepActive && !this.isSweepComplete) {
+        this.isSweepActive = true;
+        this.sweepTimer = 0;
+        this.sweepIndex = -1;
       }
     }
 
@@ -341,71 +405,90 @@ export class BarManager {
       const isCurrentHit = bar.stateName === currentShotState;
       bar.isActiveShot = isCurrentHit;
 
-      const isWinnerNow = isLastShot && i === winnerIndex;
-
-      // Actualizar el sprite superior si cambió el conteo o si es el ganador
-      if (countChanged || isWinnerNow !== bar.isWinner) {
-        this.updateTopBadge(bar, isWinnerNow);
-      }
-
-      if (isWinnerNow) {
-        // Estado Ganador en el shot final: Amarillo Neón Eléctrico
-        bar.isWinner = true;
-        bar.targetColor.copy(this.neonYellow);
-        bar.targetEmissive.copy(this.neonYellowEmissive);
-        bar.targetEmissiveIntensity = this.config.colors.winnerEmissiveIntensity;
-        bar.targetEdgeColor.copy(this.edgeYellow);
-
-        this.updateBasePlaque(bar, true);
-        this.updateVerticalText(bar, true);
-      } else if (isCurrentHit) {
-        // Estado que acaba de salir en este disparo: Pulso Cyan Neón
+      // Durante la acumulación regular de disparos:
+      if (!this.isSweepActive && !this.isSweepComplete) {
         bar.isWinner = false;
-        bar.targetColor.copy(this.neonCyan);
-        bar.targetEmissive.copy(this.neonCyan);
-        bar.targetEmissiveIntensity = 1.3;
-        bar.targetEdgeColor.copy(this.edgeCyan);
+        if (countChanged) {
+          this.updateTopBadge(bar, 'normal');
+        }
 
-        if (bar.isWinner) {
-          this.updateBasePlaque(bar, false);
-          this.updateVerticalText(bar, false);
+        if (isCurrentHit) {
+          // Pulso Cyan Neón en el estado recién medido
+          bar.targetColor.copy(this.neonCyan);
+          bar.targetEmissive.copy(this.neonCyan);
+          bar.targetEmissiveIntensity = 1.3;
+          bar.targetEdgeColor.copy(this.edgeCyan);
+        } else {
+          bar.targetColor.copy(this.neonGreen);
+          bar.targetEmissive.copy(this.neonGreenEmissive);
+          bar.targetEmissiveIntensity = this.config.colors.emissiveIntensity;
+          bar.targetEdgeColor.copy(this.edgeGreen);
         }
-      } else {
-        // Estado regular
-        if (bar.isWinner) {
-          this.updateBasePlaque(bar, false);
-          this.updateVerticalText(bar, false);
-        }
-        bar.isWinner = false;
-        bar.targetColor.copy(this.neonGreen);
-        bar.targetEmissive.copy(this.neonGreenEmissive);
-        bar.targetEmissiveIntensity = isLastShot
-          ? this.config.colors.emissiveIntensity * 0.70
-          : this.config.colors.emissiveIntensity;
-        bar.targetEdgeColor.copy(this.edgeGreen);
       }
     }
   }
 
-  updateTopBadge(bar, isWinner) {
+  updateTopBadge(bar, status = 'normal') {
     const canvas = bar.topBadgeObj.canvas;
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    ctx.fillStyle = isWinner ? 'rgba(255, 234, 0, 0.95)' : 'rgba(10, 20, 35, 0.85)';
-    if (ctx.roundRect) ctx.roundRect(8, 8, 240, 64, 14);
-    else ctx.fillRect(8, 8, 240, 64);
-    ctx.fill();
+    const isOptimal = status === 'optimal' || status === true;
+    const isScanning = status === 'scanning';
 
-    ctx.strokeStyle = isWinner ? '#ffffff' : '#38bdf8';
-    ctx.lineWidth = 3;
-    ctx.stroke();
+    if (isOptimal) {
+      // Alumbrar la solución óptima: Dorado Neón Electrizante con corona
+      ctx.fillStyle = 'rgba(255, 215, 0, 0.98)';
+      if (ctx.roundRect) ctx.roundRect(6, 6, 244, 68, 16);
+      else ctx.fillRect(6, 6, 244, 68);
+      ctx.fill();
 
-    ctx.font = 'bold 30px "JetBrains Mono", monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = isWinner ? '#060b14' : '#e0f2fe';
-    ctx.fillText(isWinner ? `👑 |${bar.stateName}⟩: ${bar.count}` : `|${bar.stateName}⟩: ${bar.count}`, 128, 40);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 3.5;
+      ctx.stroke();
+
+      ctx.font = 'bold 24px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#0a0e17';
+      ctx.shadowColor = '#ffd700';
+      ctx.shadowBlur = 8;
+      ctx.fillText(`👑 OPTIMAL |${bar.stateName}⟩: ${bar.count}`, 128, 40);
+    } else if (isScanning) {
+      // Durante el barrido por los tops: Cyan Neón con indicador de escaneo
+      ctx.fillStyle = 'rgba(0, 242, 254, 0.95)';
+      if (ctx.roundRect) ctx.roundRect(8, 8, 240, 64, 14);
+      else ctx.fillRect(8, 8, 240, 64);
+      ctx.fill();
+
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      ctx.font = 'bold 28px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#02131d';
+      ctx.shadowBlur = 0;
+      ctx.fillText(`⚡ |${bar.stateName}⟩: ${bar.count}`, 128, 40);
+    } else {
+      // Modo normal
+      ctx.fillStyle = 'rgba(10, 20, 35, 0.85)';
+      if (ctx.roundRect) ctx.roundRect(8, 8, 240, 64, 14);
+      else ctx.fillRect(8, 8, 240, 64);
+      ctx.fill();
+
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      ctx.font = 'bold 28px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#e0f2fe';
+      ctx.shadowBlur = 0;
+      ctx.fillText(`|${bar.stateName}⟩: ${bar.count}`, 128, 40);
+    }
 
     bar.topBadgeObj.texture.needsUpdate = true;
   }
@@ -470,9 +553,81 @@ export class BarManager {
     bar.verticalTextObj.texture.needsUpdate = true;
   }
 
-  update(lerpFactor = this.config.animation.lerpFactor) {
+  update(lerpFactor = this.config.animation.lerpFactor, delta = 0.016) {
     const { maxHeight, minHeight } = this.config.bar;
     const colorLerp = Math.min(1.0, lerpFactor * 2.0);
+
+    // Animación de recorrido secuencial por todos los tops al final de los shots
+    if (this.isSweepActive) {
+      this.sweepTimer += delta;
+      const stepIdx = Math.floor(this.sweepTimer / this.sweepStepDuration);
+
+      if (stepIdx < this.bars.length) {
+        if (stepIdx !== this.sweepIndex) {
+          this.sweepIndex = stepIdx;
+          const currentScanningBar = this.bars[stepIdx];
+
+          // Spotlight recorre cada columna en el barrido
+          if (this.winnerLight && currentScanningBar) {
+            this.winnerLight.position.set(currentScanningBar.posX, 6, 2);
+            this.winnerLight.targetIntensity = 3.8;
+          }
+
+          for (let i = 0; i < this.bars.length; i++) {
+            const bar = this.bars[i];
+            if (i === stepIdx) {
+              this.updateTopBadge(bar, 'scanning');
+              bar.targetColor.copy(this.neonCyan);
+              bar.targetEmissive.copy(this.neonCyan);
+              bar.targetEmissiveIntensity = 1.6;
+              bar.targetEdgeColor.copy(this.edgeCyan);
+            } else {
+              this.updateTopBadge(bar, 'normal');
+              bar.targetColor.copy(this.neonGreen);
+              bar.targetEmissive.copy(this.neonGreenEmissive);
+              bar.targetEmissiveIntensity = this.config.colors.emissiveIntensity * 0.7;
+              bar.targetEdgeColor.copy(this.edgeGreen);
+            }
+          }
+        }
+      } else {
+        // Finaliza el recorrido: Ilumina fijamente y corona la solución óptima
+        this.isSweepActive = false;
+        this.isSweepComplete = true;
+        this.sweepIndex = this.optimalIndex;
+
+        const optimalBar = (this.optimalIndex >= 0 && this.bars[this.optimalIndex])
+          ? this.bars[this.optimalIndex]
+          : this.bars[0];
+
+        if (this.winnerLight && optimalBar) {
+          this.winnerLight.position.set(optimalBar.posX, 6, 2);
+          this.winnerLight.targetIntensity = this.config.effects?.winnerSpotlightIntensity ?? 5.0;
+        }
+
+        for (let i = 0; i < this.bars.length; i++) {
+          const bar = this.bars[i];
+          const isOptimal = i === this.optimalIndex;
+          bar.isWinner = isOptimal;
+
+          if (isOptimal) {
+            this.updateTopBadge(bar, 'optimal');
+            this.updateBasePlaque(bar, true);
+            bar.targetColor.copy(this.neonYellow);
+            bar.targetEmissive.copy(this.neonYellowEmissive);
+            bar.targetEmissiveIntensity = this.config.colors.winnerEmissiveIntensity ?? 2.0;
+            bar.targetEdgeColor.copy(this.edgeYellow);
+          } else {
+            this.updateTopBadge(bar, 'normal');
+            this.updateBasePlaque(bar, false);
+            bar.targetColor.copy(this.neonGreen);
+            bar.targetEmissive.copy(this.neonGreenEmissive);
+            bar.targetEmissiveIntensity = this.config.colors.emissiveIntensity * 0.6;
+            bar.targetEdgeColor.copy(this.edgeGreen);
+          }
+        }
+      }
+    }
 
     if (this.winnerLight && this.winnerLight.targetIntensity !== undefined) {
       this.winnerLight.intensity += (this.winnerLight.targetIntensity - this.winnerLight.intensity) * colorLerp;
@@ -488,15 +643,12 @@ export class BarManager {
 
       bar.mesh.scale.y = bar.currentHeight;
 
-      // La tapa superior y el indicador flotante siguen la altura de la columna
       if (bar.topCapMesh) {
         bar.topCapMesh.position.y = bar.currentHeight;
       }
       if (bar.topBadgeObj && bar.topBadgeObj.sprite) {
         bar.topBadgeObj.sprite.position.y = bar.currentHeight + 0.55;
       }
-
-      // (Texto vertical removido del update loop)
 
       bar.material.color.lerp(bar.targetColor, colorLerp);
       bar.material.emissive.lerp(bar.targetEmissive, colorLerp);
@@ -519,20 +671,67 @@ export class BarManager {
     }
   }
 
+  setOptimalState(optimalState) {
+    this.optimalState = optimalState;
+    if (this.optimalState) {
+      this.optimalIndex = this.estados.indexOf(this.optimalState);
+    }
+  }
+
+  reset() {
+    this.isSweepActive = false;
+    this.isSweepComplete = false;
+    this.sweepIndex = -1;
+    this.sweepTimer = 0;
+    if (this.winnerLight) {
+      this.winnerLight.targetIntensity = 0;
+      this.winnerLight.intensity = 0;
+    }
+    for (const bar of this.bars) {
+      bar.isWinner = false;
+      bar.count = 0;
+      bar.currentValue = 0;
+      bar.targetValue = 0;
+      bar.targetColor.copy(this.neonGreen);
+      bar.targetEmissive.copy(this.neonGreenEmissive);
+      bar.targetEmissiveIntensity = this.config.colors.emissiveIntensity;
+      bar.targetEdgeColor.copy(this.edgeGreen);
+      this.updateTopBadge(bar, 'normal');
+      this.updateBasePlaque(bar, false);
+    }
+  }
+
   getCurrentValues() {
     return this.bars.map((b) => b.currentValue);
   }
 
   getWinnerInfo() {
-    let maxCount = -1;
-    let winnerBar = null;
-    for (const b of this.bars) {
-      if (b.count > maxCount) {
-        maxCount = b.count;
-        winnerBar = b;
+    let optimalBar = null;
+    if (this.optimalIndex >= 0 && this.bars[this.optimalIndex]) {
+      optimalBar = this.bars[this.optimalIndex];
+    } else {
+      let maxCount = -1;
+      for (const b of this.bars) {
+        if (b.count > maxCount) {
+          maxCount = b.count;
+          optimalBar = b;
+        }
       }
     }
-    return winnerBar ? { index: winnerBar.index, state: winnerBar.stateName, count: maxCount } : null;
+
+    const currentSweepBar = (this.sweepIndex >= 0 && this.bars[this.sweepIndex])
+      ? this.bars[this.sweepIndex]
+      : null;
+
+    return {
+      index: optimalBar ? optimalBar.index : 0,
+      state: optimalBar ? optimalBar.stateName : '',
+      count: optimalBar ? optimalBar.count : 0,
+      isOptimal: this.isSweepComplete,
+      isSweeping: this.isSweepActive,
+      sweepState: currentSweepBar ? currentSweepBar.stateName : null,
+      sweepProgress: this.isSweepComplete ? 1.0 : (Math.max(0, this.sweepIndex) / Math.max(1, this.bars.length))
+    };
   }
 
   dispose() {

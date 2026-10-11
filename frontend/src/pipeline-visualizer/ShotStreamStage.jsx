@@ -14,12 +14,14 @@ export default function ShotStreamStage({ data, isPlaying, speed = 1.0, onComple
     totalShots: data?.shots?.totalShots || 1024,
     currentShotState: data?.shots?.optimalState || '1010',
     isWinner: false,
+    isSweeping: false,
+    sweepState: null,
     winnerState: null,
     winnerCount: 0,
   });
 
   const shotsData = data?.shots?.shotsData || null;
-  const optimalBitstring = shotState.winnerState || data?.shots?.optimalState || '1010';
+  const optimalBitstring = data?.shots?.optimalState || shotsData?.optimalState || '1010';
   const optimalValue = data?.shots?.optimalValue !== undefined ? data.shots.optimalValue : 11.0;
   const energyMin = data?.shots?.energyMin !== undefined ? data.shots.energyMin : -11.0;
   const optimalVariables = data?.shots?.optimalVariables || { x1: 1, x2: 0, x3: 1, x4: 0 };
@@ -29,8 +31,8 @@ export default function ShotStreamStage({ data, isPlaying, speed = 1.0, onComple
     const container = mountRef.current;
     if (!container) return;
 
-    // Instantiate Three.js 3D engine with BarManager and mock3 (1024 shots) once
-    const app = new BarVisualizationApp(container, shotsData);
+    // Instanciar Three.js 3D con BarManager y configuración de estado óptimo
+    const app = new BarVisualizationApp(container, shotsData, { optimalState: optimalBitstring });
     appRef.current = app;
 
     if (app.animationController) {
@@ -44,20 +46,22 @@ export default function ShotStreamStage({ data, isPlaying, speed = 1.0, onComple
         const isLastShot = event.shotIndex >= event.totalShots - 1;
         const winner = event.winner;
 
-        // Update React state only when shot changes or on the last shot
-        if (event.shotIndex !== lastReportedShot || isLastShot) {
+        // Actualizar estado al cambiar shot o durante el barrido final
+        if (event.shotIndex !== lastReportedShot || isLastShot || winner?.isSweeping || winner?.isOptimal) {
           lastReportedShot = event.shotIndex;
           setShotState({
             currentShot: event.shotIndex + 1,
             totalShots: event.totalShots,
-            currentShotState: event.currentShotState || '1010',
-            isWinner: isLastShot && !!winner,
-            winnerState: winner ? winner.state : null,
+            currentShotState: event.currentShotState || optimalBitstring,
+            isWinner: isLastShot && !!winner?.isOptimal,
+            isSweeping: isLastShot && !!winner?.isSweeping,
+            sweepState: winner?.sweepState || null,
+            winnerState: winner ? winner.state : optimalBitstring,
             winnerCount: winner ? winner.count : 0,
           });
         }
 
-        if (isLastShot && onCompleteRef.current) {
+        if (isLastShot && winner?.isOptimal && onCompleteRef.current) {
           onCompleteRef.current();
         }
       }
@@ -69,7 +73,7 @@ export default function ShotStreamStage({ data, isPlaying, speed = 1.0, onComple
         appRef.current = null;
       }
     };
-  }, [shotsData]);
+  }, [shotsData, optimalBitstring]);
 
   useEffect(() => {
     const total = data?.shots?.totalShots || shotsData?.shots?.length || 1024;
@@ -98,8 +102,12 @@ export default function ShotStreamStage({ data, isPlaying, speed = 1.0, onComple
   }, [speed]);
 
   const handleRestart3D = () => {
-    if (appRef.current && appRef.current.animationController) {
-      appRef.current.animationController.reset();
+    if (appRef.current) {
+      if (appRef.current.reset) {
+        appRef.current.reset();
+      } else if (appRef.current.animationController) {
+        appRef.current.animationController.reset();
+      }
     }
   };
 
@@ -134,12 +142,22 @@ export default function ShotStreamStage({ data, isPlaying, speed = 1.0, onComple
           </div>
         </div>
 
-        {/* Floating Winner Banner when finished */}
+        {/* Floating Banner during final sweep across all tops */}
+        {shotState.isSweeping && (
+          <div className="absolute top-14 left-1/2 -translate-x-1/2 z-20 pointer-events-auto bg-slate-900/95 backdrop-blur-md border border-cyan-400 px-4 py-2 rounded-2xl shadow-[0_0_25px_rgba(0,242,254,0.6)] animate-pulse flex items-center gap-2">
+            <span className="text-xl">⚡</span>
+            <div className="font-mono text-xs font-bold text-cyan-300">
+              SCANNING EIGENSTATES: <span className="text-white text-sm">|{shotState.sweepState || '...'}⟩</span> (evaluating ground state)
+            </div>
+          </div>
+        )}
+
+        {/* Floating Winner Banner when optimal state is locked */}
         {shotState.isWinner && shotState.winnerState && (
           <div className="absolute top-14 left-1/2 -translate-x-1/2 z-20 pointer-events-auto bg-slate-900/95 backdrop-blur-md border-2 border-amber-400 px-4 py-2 rounded-2xl shadow-[0_0_30px_rgba(255,234,0,0.8)] animate-bounce flex items-center gap-2">
             <span className="text-2xl">👑</span>
             <div className="font-mono text-xs font-bold text-amber-300">
-              WINNING STATE: <span className="text-white text-sm">|{shotState.winnerState}⟩</span> ({shotState.winnerCount} shots)
+              OPTIMAL SOLUTION: <span className="text-white text-sm">|{shotState.winnerState}⟩</span> ({shotState.winnerCount} shots • Min Energy ⟨H_C⟩)
             </div>
           </div>
         )}

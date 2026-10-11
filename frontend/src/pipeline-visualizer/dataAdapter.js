@@ -108,14 +108,18 @@ export function parseMiniZincCode(codeText) {
  * Genera el flujo estocástico de disparos 3D (1024 shots) muestreado con
  * la distribución y conteos reales medidos por el simulador cuántico Qiskit.
  */
-function generateRealShotsSequence(distribution, counts, totalShotsTarget = 1024) {
+function generateRealShotsSequence(distribution, counts, totalShotsTarget = 1024, optimalBitstring = null) {
   if (!distribution || distribution.length === 0) {
     return null;
   }
 
-  // Tomar hasta los 8 estados más significativos (o todos los disponibles)
+  // Tomar hasta los 8 estados más significativos
   const topStates = distribution.slice(0, 8);
-  const stateNames = Array.from(new Set(topStates.map((s) => s.bits))).sort();
+  const stateNames = Array.from(new Set(topStates.map((s) => s.bits)));
+  if (optimalBitstring && !stateNames.includes(optimalBitstring)) {
+    stateNames.push(optimalBitstring);
+  }
+  stateNames.sort();
 
   // Calcular pesos relativos
   let totalProb = topStates.reduce((acc, s) => acc + (s.prob || 0), 0);
@@ -133,10 +137,18 @@ function generateRealShotsSequence(distribution, counts, totalShotsTarget = 1024
     }
   });
 
-  // Ajustar al total exacto agregando el estado óptimo (peak)
+  // Asegurar que si el estado óptimo no estaba en topStates, tenga representación
+  if (optimalBitstring && !topStates.some((s) => s.bits === optimalBitstring)) {
+    const minOptimalShots = Math.max(1, Math.round(totalShotsTarget * 0.05));
+    for (let i = 0; i < minOptimalShots; i++) {
+      shots.push(optimalBitstring);
+    }
+  }
+
+  // Ajustar al total exacto agregando el estado óptimo o peak
   const peakState = distribution.find((d) => d.peak)?.bits || distribution[0].bits;
   while (shots.length < totalShotsTarget) {
-    shots.push(peakState);
+    shots.push(optimalBitstring || peakState);
   }
   const finalShots = shots.slice(0, totalShotsTarget);
 
@@ -150,7 +162,8 @@ function generateRealShotsSequence(distribution, counts, totalShotsTarget = 1024
     nombre: `Real Quantum Execution (${finalShots.length} shots)`,
     num_estados: stateNames.length,
     estados: stateNames,
-    shots: finalShots
+    shots: finalShots,
+    optimalState: optimalBitstring || peakState
   };
 }
 
@@ -182,7 +195,12 @@ export function adaptBackendDataToPipeline(backendResult, rawCode, hyperparams) 
     // Si aún no se ha ejecutado el backend, usar el código actual para la etapa 1 y mock para el resto
     const parsedCode = parseMiniZincCode(rawCode);
     const targetShots = Number(hyperparams?.shots || 1024);
-    const mockShotsData = generateRealShotsSequence(PIPELINE_MOCK_DATA.shots.distribution, null, targetShots);
+    const mockShotsData = generateRealShotsSequence(
+      PIPELINE_MOCK_DATA.shots.distribution,
+      null,
+      targetShots,
+      PIPELINE_MOCK_DATA.shots.optimalState
+    );
     return {
       ...PIPELINE_MOCK_DATA,
       code: {
@@ -390,7 +408,7 @@ export function adaptBackendDataToPipeline(backendResult, rawCode, hyperparams) 
   const counts = details.counts || {};
   const totalShots = Number(details.shots || hyperparams?.shots || 1024);
 
-  const realShotsData = generateRealShotsSequence(distribution, counts, totalShots);
+  const realShotsData = generateRealShotsSequence(distribution, counts, totalShots, optimalBitstring);
 
   const shotsData = {
     totalShots,

@@ -13,6 +13,8 @@ export default function BarChartVisualizer3D({ customData = null }) {
     currentShotState: '',
     progress: 0,
     isWinner: false,
+    isSweeping: false,
+    sweepState: null,
     winnerState: null,
     winnerCount: 0,
   });
@@ -24,8 +26,10 @@ export default function BarChartVisualizer3D({ customData = null }) {
     const container = mountRef.current;
     if (!container) return;
 
-    // Instanciar la app 3D de barras neón
-    const app = new BarVisualizationApp(container, activeDataset);
+    // Instanciar la app 3D de barras neón con optimalState
+    const app = new BarVisualizationApp(container, activeDataset, {
+      optimalState: activeDataset?.optimalState || null,
+    });
     appRef.current = app;
 
     let lastReportedShot = -1;
@@ -34,14 +38,16 @@ export default function BarChartVisualizer3D({ customData = null }) {
         const isLastShot = event.shotIndex >= event.totalShots - 1;
         const winner = event.winner;
 
-        if (event.shotIndex !== lastReportedShot || isLastShot) {
+        if (event.shotIndex !== lastReportedShot || isLastShot || winner?.isSweeping || winner?.isOptimal) {
           lastReportedShot = event.shotIndex;
           setShotState({
             currentShot: event.shotIndex + 1,
             totalShots: event.totalShots,
             currentShotState: event.currentShotState || '',
             progress: event.progress * 100,
-            isWinner: isLastShot && !!winner,
+            isWinner: isLastShot && !!winner?.isOptimal,
+            isSweeping: isLastShot && !!winner?.isSweeping,
+            sweepState: winner?.sweepState || null,
             winnerState: winner ? winner.state : null,
             winnerCount: winner ? winner.count : 0,
           });
@@ -68,7 +74,11 @@ export default function BarChartVisualizer3D({ customData = null }) {
 
   const handleReload = () => {
     if (!appRef.current) return;
-    appRef.current.animationController.reset();
+    if (appRef.current.reset) {
+      appRef.current.reset();
+    } else {
+      appRef.current.animationController.reset();
+    }
     setIsPlaying(true);
   };
 
@@ -85,12 +95,19 @@ export default function BarChartVisualizer3D({ customData = null }) {
 
       {/* Superposed HUD Layer */}
       <div className="absolute inset-0 p-3 sm:p-4 flex flex-col justify-between pointer-events-none z-10">
-        {/* Top Section: SOLO conserva el mensaje del estado ganador al finalizar */}
-        {shotState.isWinner && shotState.winnerState ? (
+        {/* Top Section: Banner durante el recorrido o al finalizar con la solución óptima */}
+        {shotState.isSweeping ? (
+          <div className="pointer-events-auto self-center bg-slate-900/95 backdrop-blur-md border border-cyan-400 px-4 py-2 rounded-xl shadow-[0_0_25px_rgba(0,242,254,0.6)] animate-pulse flex items-center gap-2">
+            <span className="text-lg">⚡</span>
+            <span className="font-mono text-xs font-bold text-cyan-300">
+              RECORRIENDO TOP SHOTS: <strong className="text-white text-sm">|{shotState.sweepState}⟩</strong>
+            </span>
+          </div>
+        ) : shotState.isWinner && shotState.winnerState ? (
           <div className="pointer-events-auto self-center bg-slate-900/95 backdrop-blur-md border border-amber-400/80 px-4 py-2 rounded-xl shadow-[0_0_28px_rgba(255,234,0,0.65)] animate-bounce flex items-center gap-2">
             <span className="text-xl">👑</span>
             <span className="font-mono text-xs font-bold text-amber-300">
-              ESTADO GANADOR: <strong className="text-white text-sm">|{shotState.winnerState}⟩</strong> ({shotState.winnerCount} disparos)
+              SOLUCIÓN ÓPTIMA QAOA: <strong className="text-white text-sm">|{shotState.winnerState}⟩</strong> ({shotState.winnerCount} disparos)
             </span>
           </div>
         ) : (

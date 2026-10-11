@@ -23,7 +23,7 @@ export const defaultData = {
  * Módulo principal que orquesta la escena, los datos por shots, las barras y el bucle de animación.
  */
 export class BarVisualizationApp {
-  constructor(containerId = 'canvas-container', initialData = null) {
+  constructor(containerId = 'canvas-container', initialData = null, options = {}) {
     this.container = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
     if (!this.container) {
       console.error(`Contenedor #${containerId} no encontrado.`);
@@ -31,6 +31,7 @@ export class BarVisualizationApp {
     }
 
     this.currentData = initialData || defaultData;
+    this.optimalState = options.optimalState || initialData?.optimalState || null;
     this.clock = new THREE.Clock();
     this.isRunning = true;
     this.animationFrameId = null;
@@ -42,7 +43,8 @@ export class BarVisualizationApp {
     this.barManager = new BarManager(
       this.sceneManager.scene,
       config,
-      this.currentData.estados
+      this.currentData.estados,
+      { optimalState: this.optimalState }
     );
 
     // 3. Inicializar controlador de shots y transiciones
@@ -71,16 +73,18 @@ export class BarVisualizationApp {
     this.animationFrameId = requestAnimationFrame(this.animate);
   }
 
-  loadData(newData) {
+  loadData(newData, options = {}) {
     if (!newData || !newData.estados || !newData.shots) return;
     this.currentData = newData;
+    this.optimalState = options.optimalState || newData?.optimalState || this.optimalState;
 
     // Recrear grupo de barras si cambiaron los estados
     this.barManager.dispose();
     this.barManager = new BarManager(
       this.sceneManager.scene,
       config,
-      newData.estados
+      newData.estados,
+      { optimalState: this.optimalState }
     );
 
     this.animationController.setData(newData);
@@ -93,6 +97,15 @@ export class BarVisualizationApp {
       initialShot,
       initialCounts
     );
+  }
+
+  reset() {
+    if (this.barManager) {
+      this.barManager.reset();
+    }
+    if (this.animationController) {
+      this.animationController.reset();
+    }
   }
 
   onShotChangeCallback(shotIndex, totalShots, currentShotState, counts) {
@@ -120,7 +133,7 @@ export class BarVisualizationApp {
     const delta = this.clock.getDelta();
 
     this.animationController.update(delta);
-    this.barManager.update(config.animation.lerpFactor);
+    this.barManager.update(config.animation.lerpFactor, delta);
     this.sceneManager.update();
 
     if (this.uiUpdateCallback) {
