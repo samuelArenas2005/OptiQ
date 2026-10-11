@@ -8,7 +8,8 @@
 > **Looking for the comprehensive project documentation, theoretical foundations, and Qollab guide? Read the full [documentation.md](documentation.md).**
 >
 > 🚀 **Live Interactive Web IDE:** [https://opti-q.vercel.app/](https://opti-q.vercel.app/)  
-> 💻 **GitHub Repository:** [https://github.com/samuelArenas2005/OptiQ](https://github.com/samuelArenas2005/OptiQ)
+> 💻 **GitHub Repository:** [https://github.com/samuelArenas2005/OptiQ](https://github.com/samuelArenas2005/OptiQ)  
+> ⚛️ **Attribution:** This effort is supported by Qollab & IonQ
 
 ---
 
@@ -251,6 +252,12 @@ docker compose down
 - [samuelArenas2005](https://github.com/samuelArenas2005)
 - [Sebastian6174](https://github.com/Sebastian6174)
 - [Danicol12](https://github.com/Danicol12)
+
+---
+
+## Attribution & Support
+
+> **This effort is supported by Qollab & IonQ**
 
 ---
 

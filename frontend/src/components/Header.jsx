@@ -16,6 +16,12 @@ export default function Header() {
         </span>
       </div>
 
+      {/* Attribution Badge */}
+      <div className="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-low border border-outline-variant/40 text-[11px] font-mono text-outline shadow-2xs">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+        <span>This effort is supported by Qollab &amp; IonQ</span>
+      </div>
+
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-1 text-on-surface-variant">
           <button

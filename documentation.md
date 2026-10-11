@@ -6,6 +6,8 @@
 
 > **Try it now → [opti-q.vercel.app](https://opti-q.vercel.app/)** · **Source code → [github.com/samuelArenas2005/OptiQ](https://github.com/samuelArenas2005/OptiQ)**
 > The full IDE runs in your browser: write a model, press **RUN**, and see the QAOA results, the probability histogram of measured states, and the best feasible solution selected directly from the quantum distribution.
+>
+> ⚛️ **Attribution:** *This effort is supported by Qollab & IonQ*
 
 **OptiQ** lets you describe an optimization problem the way you would on paper, in a **MiniZinc-style** language, and solves it with **QAOA** in Qiskit. No gates, no Hamiltonians by hand: OptiQ compiles your model to a **binary program**, then to a **QUBO / Ising Hamiltonian**, builds the quantum circuit, runs it, and checks the best answer.
 
@@ -287,6 +289,8 @@ For detailed, step-by-step instructions on running the project locally (FastAPI 
 ## Credits
 
 OptiQ is by [Ckancord33](https://github.com/Ckancord33), [samuelArenas2005](https://github.com/samuelArenas2005), [Sebastian6174](https://github.com/Sebastian6174) and [Danicol12](https://github.com/Danicol12), released under the MIT License (see `LICENSE`).
+
+> **This effort is supported by Qollab & IonQ**
 
 - Live app: [opti-q.vercel.app](https://opti-q.vercel.app/)
 - Source: [github.com/samuelArenas2005/OptiQ](https://github.com/samuelArenas2005/OptiQ)
