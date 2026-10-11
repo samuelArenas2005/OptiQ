@@ -16,10 +16,24 @@ import json
 import logging
 from typing import Dict, Any, List, Optional
 import numpy as np
+import scipy.special
 
 logger = logging.getLogger("PINNModel")
 
-# Detección opcional de motores de inferencia
+# Detección de módulo de pesos en Python puro (ideal para Qollab / Pyodide)
+NUMPY_WEIGHTS_AVAILABLE = False
+try:
+    from backend.ml.weights.pinn_weights_numpy import PINN_METADATA, get_numpy_weights
+    NUMPY_WEIGHTS_AVAILABLE = True
+except ImportError:
+    try:
+        from ml.weights.pinn_weights_numpy import PINN_METADATA, get_numpy_weights
+        NUMPY_WEIGHTS_AVAILABLE = True
+    except ImportError:
+        PINN_METADATA = None
+        get_numpy_weights = None
+
+# Detección opcional de motores de inferencia compilados
 try:
     import onnxruntime as ort
     ONNX_AVAILABLE = True
@@ -117,8 +131,9 @@ class PINNPredictor:
         self.weights_path = os.path.join(self.weights_dir, "pinn_qaoa_weights.pt")
         self.meta_path = os.path.join(self.weights_dir, "pinn_metadata.json")
 
-        self.runtime_engine: str = "none"  # 'onnx', 'pytorch' o 'heuristic'
+        self.runtime_engine: str = "none"  # 'onnx', 'numpy', 'pytorch' o 'heuristic'
         self.ort_session: Optional[Any] = None
+        self.numpy_weights: Optional[Dict[str, np.ndarray]] = None
         self.torch_model: Optional[Any] = None
         self.device: Optional[Any] = None
 
@@ -138,47 +153,73 @@ class PINNPredictor:
 
     def _load_artifacts(self):
         """Carga metadatos y configura el mejor motor de inferencia disponible."""
-        if not os.path.exists(self.meta_path):
-            logger.warning(f"Metadatos no encontrados en {self.meta_path}. Modo heurístico activo.")
+        # 1. Obtener metadatos (preferir módulo Python embebido o archivo)
+        if NUMPY_WEIGHTS_AVAILABLE and PINN_METADATA:
+            self.metadata = PINN_METADATA
+        else:
+            for literal_path in ["backend/ml/weights/pinn_metadata.json", self.meta_path]:
+                if os.path.exists(literal_path):
+                    try:
+                        with open(literal_path, "r", encoding="utf-8") as f:
+                            self.metadata = json.load(f)
+                            break
+                    except Exception:
+                        pass
+
+        if not self.metadata:
+            logger.warning("Metadatos no encontrados. Modo heurístico activo.")
             self.runtime_engine = "heuristic"
             return
 
         try:
-            with open(self.meta_path, "r", encoding="utf-8") as f:
-                self.metadata = json.load(f)
-
             self.continuous_features = self.metadata.get("continuous_features", [])
             self.categorical_features = self.metadata.get("categorical_features", [])
             self.scaler_mean = np.array(self.metadata.get("scaler_mean", []), dtype=np.float32)
             self.scaler_scale = np.array(self.metadata.get("scaler_scale", []), dtype=np.float32)
 
-            # Prioridad 1: ONNX Runtime (Ultra-ligero, no requiere PyTorch)
+            # Prioridad 1: ONNX Runtime (si está instalado y existe el modelo)
             if ONNX_AVAILABLE and os.path.exists(self.onnx_path):
-                sess_options = ort.SessionOptions()
-                sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-                self.ort_session = ort.InferenceSession(
-                    self.onnx_path,
-                    sess_options=sess_options,
-                    providers=["CPUExecutionProvider"]
-                )
-                self.runtime_engine = "onnx"
-                logger.info(f"[PINN] Inferencia activada mediante ONNX Runtime ({os.path.basename(self.onnx_path)}).")
-                return
+                try:
+                    sess_options = ort.SessionOptions()
+                    sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+                    self.ort_session = ort.InferenceSession(
+                        self.onnx_path,
+                        sess_options=sess_options,
+                        providers=["CPUExecutionProvider"]
+                    )
+                    self.runtime_engine = "onnx"
+                    logger.info(f"[PINN] Inferencia activada mediante ONNX Runtime ({os.path.basename(self.onnx_path)}).")
+                    return
+                except Exception as e_onnx:
+                    logger.debug(f"[PINN] ONNX falló ({e_onnx}), buscando siguiente motor.")
 
-            # Prioridad 2: PyTorch (Fallback si torch está instalado)
+            # Prioridad 2: Pure NumPy (Cero dependencias binarias, compatibilidad total con Qollab / Pyodide)
+            if NUMPY_WEIGHTS_AVAILABLE and get_numpy_weights is not None:
+                try:
+                    self.numpy_weights = get_numpy_weights()
+                    self.runtime_engine = "numpy"
+                    logger.info("[PINN] Inferencia activada mediante Pure NumPy (compatibilidad total con Qollab).")
+                    return
+                except Exception as e_np:
+                    logger.debug(f"[PINN] Fallback al cargar pesos NumPy: {e_np}")
+
+            # Prioridad 3: PyTorch (Fallback si torch está instalado)
             if TORCH_AVAILABLE and os.path.exists(self.weights_path):
-                self.device = torch.device("cpu")
-                total_features = len(self.continuous_features) + len(self.categorical_features)
-                self.torch_model = QaoaPINN(in_features=total_features, hidden_dim=128)
-                state_dict = torch.load(self.weights_path, map_location=self.device)
-                self.torch_model.load_state_dict(state_dict)
-                self.torch_model.to(self.device)
-                self.torch_model.eval()
-                self.runtime_engine = "pytorch"
-                logger.info(f"[PINN] Inferencia activada mediante PyTorch ({os.path.basename(self.weights_path)}).")
-                return
+                try:
+                    self.device = torch.device("cpu")
+                    total_features = len(self.continuous_features) + len(self.categorical_features)
+                    self.torch_model = QaoaPINN(in_features=total_features, hidden_dim=128)
+                    state_dict = torch.load(self.weights_path, map_location=self.device)
+                    self.torch_model.load_state_dict(state_dict)
+                    self.torch_model.to(self.device)
+                    self.torch_model.eval()
+                    self.runtime_engine = "pytorch"
+                    logger.info(f"[PINN] Inferencia activada mediante PyTorch ({os.path.basename(self.weights_path)}).")
+                    return
+                except Exception as e_pt:
+                    logger.debug(f"[PINN] PyTorch falló ({e_pt}).")
 
-            logger.warning("No se encontró motor ONNX ni PyTorch disponible. Modo heurístico activo.")
+            logger.warning("No se encontró motor ONNX, NumPy ni PyTorch disponible. Modo heurístico activo.")
             self.runtime_engine = "heuristic"
         except Exception as e:
             logger.error(f"Error al inicializar el modelo PINN: {e}. Modo heurístico activo.")
@@ -262,9 +303,14 @@ class PINNPredictor:
 
             # 4. Inferencia por motor
             if self.runtime_engine == "onnx" and self.ort_session is not None:
-                # Inferencia directa con ONNX Runtime (NumPy puro, cero PyTorch)
+                # Inferencia directa con ONNX Runtime
                 ort_inputs = {"features": input_features[np.newaxis, :]}
                 pred_angles, pred_telemetry = self.ort_session.run(None, ort_inputs)
+                angles_np = pred_angles[0]
+                telemetry_np = pred_telemetry[0]
+            elif self.runtime_engine == "numpy" and self.numpy_weights is not None:
+                # Inferencia nativa con Pure NumPy (Ideal para Qollab / Pyodide, < 1ms)
+                pred_angles, pred_telemetry = self._forward_numpy(input_features[np.newaxis, :])
                 angles_np = pred_angles[0]
                 telemetry_np = pred_telemetry[0]
             elif self.runtime_engine == "pytorch" and self.torch_model is not None:
@@ -309,6 +355,59 @@ class PINNPredictor:
         except Exception as e:
             logger.error(f"Fallo durante inferencia PINN: {e}. Usando fallback.")
             return self._heuristic_fallback(topology)
+
+    def _forward_numpy(self, x: np.ndarray):
+        """Pase hacia adelante (forward) evaluado completamente en NumPy vectorizado."""
+        w = self.numpy_weights
+
+        def linear(inp, weight, bias):
+            return inp @ weight.T + bias
+
+        def batch_norm(inp, weight, bias, mean, var, eps=1e-5):
+            return (inp - mean) / np.sqrt(var + eps) * weight + bias
+
+        def gelu(inp):
+            return inp * 0.5 * (1.0 + scipy.special.erf(inp / np.sqrt(2.0)))
+
+        # Capa de entrada (Linear -> BatchNorm -> GELU)
+        h = linear(x, w["input_layer.0.weight"], w["input_layer.0.bias"])
+        h = batch_norm(h, w["input_layer.1.weight"], w["input_layer.1.bias"],
+                       w["input_layer.1.running_mean"], w["input_layer.1.running_var"])
+        h = gelu(h)
+
+        # ResBlock 1
+        h_in = h
+        b1 = linear(h, w["res1.block.0.weight"], w["res1.block.0.bias"])
+        b1 = batch_norm(b1, w["res1.block.1.weight"], w["res1.block.1.bias"],
+                        w["res1.block.1.running_mean"], w["res1.block.1.running_var"])
+        b1 = gelu(b1)
+        b2 = linear(b1, w["res1.block.4.weight"], w["res1.block.4.bias"])
+        b2 = batch_norm(b2, w["res1.block.5.weight"], w["res1.block.5.bias"],
+                        w["res1.block.5.running_mean"], w["res1.block.5.running_var"])
+        h = gelu(h_in + b2)
+
+        # ResBlock 2
+        h_in = h
+        b1 = linear(h, w["res2.block.0.weight"], w["res2.block.0.bias"])
+        b1 = batch_norm(b1, w["res2.block.1.weight"], w["res2.block.1.bias"],
+                        w["res2.block.1.running_mean"], w["res2.block.1.running_var"])
+        b1 = gelu(b1)
+        b2 = linear(b1, w["res2.block.4.weight"], w["res2.block.4.bias"])
+        b2 = batch_norm(b2, w["res2.block.5.weight"], w["res2.block.5.bias"],
+                        w["res2.block.5.running_mean"], w["res2.block.5.running_var"])
+        h = gelu(h_in + b2)
+
+        # Head de ángulos (Linear -> GELU -> Linear)
+        ah = linear(h, w["angles_head.0.weight"], w["angles_head.0.bias"])
+        ah = gelu(ah)
+        angles = linear(ah, w["angles_head.2.weight"], w["angles_head.2.bias"])
+
+        # Head de telemetría (Linear -> GELU -> Linear)
+        th = linear(h, w["telemetry_head.0.weight"], w["telemetry_head.0.bias"])
+        th = gelu(th)
+        telemetry = linear(th, w["telemetry_head.2.weight"], w["telemetry_head.2.bias"])
+
+        return angles, telemetry
 
     def _heuristic_fallback(self, topology: Dict[str, Any]) -> Dict[str, Any]:
         """Estrategia heurística cuántica si la red no está cargada."""
