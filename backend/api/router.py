@@ -1,4 +1,6 @@
 import logging
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from typing import Optional, Dict, Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -16,6 +18,9 @@ except ModuleNotFoundError:
 
 logger = logging.getLogger("Router")
 router = APIRouter()
+
+# Thread pool para paralelizar tareas CPU-intensivas simultáneamente
+thread_pool = ThreadPoolExecutor(max_workers=4)
 
 
 class ProblemRequest(BaseModel):
@@ -35,9 +40,8 @@ async def solve_problem(request: ProblemRequest):
     Endpoint principal que recibe el problema declarativo.
     El flujo consiste en:
     1. Parsear el problema declarativo a programación entera binaria y QUBO.
-    2. Extraer features de la topología (nodos, aristas, global/laplaciano).
-    3. Resolver con QAOA simulado en Qiskit usando la configuración y ángulos.
-    4. Retornar la solución de variables, valor objetivo, histograma de estados y métricas.
+    2. Ejecutar en paralelo mediante hilos la extracción de features y la simulación cuántica QAOA.
+    3. Retornar inmediatamente los resultados consolidados en milisegundos.
     """
     logger.info(f"Recibida petición de resolución con solver: {request.solver}")
 
@@ -48,21 +52,10 @@ async def solve_problem(request: ProblemRequest):
         logger.error(f"Error al parsear el modelo MiniZinc: {e}")
         raise HTTPException(status_code=400, detail=f"Error de sintaxis o parseo MiniZinc: {str(e)}")
 
-    # 2. Extracción de Features del Problema (Nodos, Aristas, Topología Global)
     qubo_problem = binary_problem.topology.get("qubo_problem")
     original_qp = binary_problem.topology.get("original_qp")
-    try:
-        features = extract_bip_features(qubo_problem, original_qp)
-    except Exception as e:
-        logger.warning(f"Error al extraer features del grafo: {e}")
-        features = {
-            "global": {},
-            "nodes": [],
-            "edges": [],
-            "console_summary": [f"[FEATURES] Extracción omitida: {str(e)}"]
-        }
 
-    # 3. Empaquetar hiperparámetros
+    # 2. Empaquetar hiperparámetros
     hyperparams = {
         "shots": request.shots or 8192,
         "p_steps": request.p_steps or 2,
@@ -72,11 +65,35 @@ async def solve_problem(request: ProblemRequest):
         "beta0": request.beta0
     }
 
-    # 4. Ejecución del Solver Cuántico QAOA en Qiskit
+    # 3. Paralelización de Extracción de Features y Resolución QAOA con Hilos
+    loop = asyncio.get_running_loop()
+
+    def run_feature_extraction():
+        try:
+            return extract_bip_features(qubo_problem, original_qp)
+        except Exception as ex:
+            logger.warning(f"Error al extraer features del grafo: {ex}")
+            return {
+                "global": {},
+                "nodes": [],
+                "edges": [],
+                "console_summary": [f"[FEATURES] Extracción omitida: {str(ex)}"]
+            }
+
+    def run_quantum():
+        try:
+            return run_qaoa(binary_problem, hyperparams)
+        except Exception as ex:
+            logger.error(f"Error ejecutando QAOA: {ex}", exc_info=True)
+            raise ex
+
+    # Ejecución simultánea en hilos dedicados
+    feat_task = loop.run_in_executor(thread_pool, run_feature_extraction)
+    qaoa_task = loop.run_in_executor(thread_pool, run_quantum)
+
     try:
-        qaoa_results = run_qaoa(binary_problem, hyperparams)
+        features, qaoa_results = await asyncio.gather(feat_task, qaoa_task)
     except Exception as e:
-        logger.error(f"Error ejecutando QAOA: {e}")
         raise HTTPException(status_code=500, detail=f"Error durante simulación QAOA: {str(e)}")
 
     return {
@@ -102,7 +119,7 @@ async def solve_problem(request: ProblemRequest):
             "distribution": qaoa_results.get("distribution", []),
             "execution_time_ms": qaoa_results.get("execution_time_ms", 0.0),
             "qubits_count": qaoa_results.get("qubits_count", 0),
-            "hardware": qaoa_results.get("hardware", "Qiskit Simulator"),
+            "hardware": qaoa_results.get("hardware", "Qiskit Statevector (Simulado Rápido)"),
             "console_logs": qaoa_results.get("console_logs", [])
         }
     }

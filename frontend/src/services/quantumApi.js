@@ -1,5 +1,5 @@
 /**
- * quantumApi.js - Interacción directa con el backend FastAPI (router.py)
+ * quantumApi.js - Interacción directa y optimizada con el backend FastAPI (router.py)
  */
 
 const API_BASE = 'http://127.0.0.1:8000/api';
@@ -15,20 +15,15 @@ export async function runQuantumSolver(code, options = {}, onProgress = () => {}
     beta0 = 0.78
   } = options;
 
-  onProgress({ step: 1, message: 'Enviando modelo MiniZinc al backend FastAPI...' });
-  await new Promise(r => setTimeout(r, 250));
-
-  onProgress({ step: 2, message: 'Parseando variables declarativas y construyendo QUBO...' });
-  await new Promise(r => setTimeout(r, 300));
-
-  onProgress({ step: 3, message: 'Extrayendo features espectrales del Laplaciano y Hamiltoniano...' });
-  await new Promise(r => setTimeout(r, 300));
-
-  onProgress({ step: 4, message: 'Ejecutando circuito QAOA simulado en Qiskit...' });
+  onProgress({ step: 1, message: 'Enviando modelo MiniZinc y ejecutando pipeline concurrente...' });
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 45000);
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+    const progressTimer = setTimeout(() => {
+      onProgress({ step: 3, message: 'Extrayendo features espectrales y optimizando circuito QAOA...' });
+    }, 150);
 
     const response = await fetch(`${API_BASE}/solve`, {
       method: 'POST',
@@ -47,9 +42,11 @@ export async function runQuantumSolver(code, options = {}, onProgress = () => {}
     });
 
     clearTimeout(timeoutId);
+    clearTimeout(progressTimer);
 
     if (response.ok) {
       const data = await response.json();
+      onProgress({ step: 4, message: 'Solución cuántica obtenida con éxito.' });
       return {
         success: true,
         message: data.message || 'Problema parseado y resuelto con éxito.',
@@ -67,6 +64,13 @@ export async function runQuantumSolver(code, options = {}, onProgress = () => {}
       };
     }
   } catch (err) {
+    if (err.name === 'AbortError') {
+      return {
+        success: false,
+        error: 'La simulación cuántica superó el tiempo límite de espera (timeout).',
+        timestamp: new Date().toLocaleTimeString()
+      };
+    }
     return {
       success: false,
       error: `No se pudo conectar con el backend FastAPI (http://127.0.0.1:8000): ${err.message}`,

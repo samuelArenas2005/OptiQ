@@ -590,12 +590,12 @@ export default function RightTelemetryPanel({
                             </div>
 
                             <div className="bg-surface-container-lowest p-2 rounded border border-outline-variant/30">
-                              <span className="text-outline text-[10px] block">Índice Frustración:</span>
+                              <span className="text-outline text-[10px] block">Balance Frustración:</span>
                               <span className="font-bold text-tertiary">
                                 {Math.round((features?.global?.global_frustration_index || 0) * 100)}%
                               </span>
                               <span className="text-[9px] text-outline block">
-                                {features?.global?.frustrated_triangles ?? 0}/{features?.global?.total_triangles ?? 0} ciclos
+                                Autovalor extremal L_signed
                               </span>
                             </div>
                           </div>
@@ -637,7 +637,15 @@ export default function RightTelemetryPanel({
                                   <td className="py-1 text-primary font-bold">{n.variable}</td>
                                   <td className="py-1">{n.h_i}</td>
                                   <td className="py-1">{n.degree}</td>
-                                  <td className="py-1">{n.clustering_coefficient}</td>
+                                  <td className="py-1">
+                                    {n.clustering_coefficient === 'GNN' ? (
+                                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary-container/60 text-primary font-medium" title="Omitido en preprocesamiento; aprendido por capas GNN">
+                                        GNN
+                                      </span>
+                                    ) : (
+                                      n.clustering_coefficient
+                                    )}
+                                  </td>
                                   <td className="py-1 text-outline">{n.constraint_multiplier}</td>
                                 </tr>
                               ))}
